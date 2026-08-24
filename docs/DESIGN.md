@@ -37,13 +37,16 @@
 
 ---
 
-## Component Styling Rules
+## Component Styling Rules & Mobile Control Layout
 
-### HUD Overlay
-- 화면 상단: HP 바, EXP 라인, 타이머, 킬 카운터 (반투명 오버레이)
-- 화면 하단: 모바일 터치 전용 조이스틱 센서 영역
+### HUD Overlay & Control Layout
+- **화면 상단 HUD**: HP 바, EXP 게이지 라인, 타이머, 킬 카운터 (반투명 오버레이)
+- **화면 좌측 하단**: **360도 가상 이동 조이스틱 (Virtual Joystick)**
+- **화면 우측 하단**:
+  - **시해 메인 액션 버튼**: 크고 직관적인 원형 버튼 (터치 사출 or 토글 스탠스)
+  - **순보(Shunpo) 서브 버튼**: 시해 메인 버튼의 **좌측 하단 위치 콤팩트 버튼**
+    - 터치 시 **진행 방향 무적 대시 + 순간 불릿 타임(시간 완속/슬로우 모션) 이팩트** 발생
 
 ### Level Up Card Modal
 - 네온 골드 굵은 테두리와 짙은 다크 글래스모피즘 (`backdrop-filter: blur(12px)`)
-- 3개 카드 배치 (스킬 아이콘, 스킬명, 설명, 등급 색상)
-
+- 3개 카드 배치 (스킬/스탯 아이콘, 이름, 설명, 등급 색상)

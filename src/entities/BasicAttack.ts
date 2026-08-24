@@ -1,0 +1,203 @@
+/**
+ * 블리치 사신 서바이벌 - 참백도 기본 공격 로직
+ */
+
+import { state } from '../core/GameState';
+import { AttackInstance } from '../types/game';
+import { Synth } from '../core/AudioManager';
+import { killEnemy } from './Enemy';
+import { createHitParticles, addFloatingText } from '../renderers/CanvasRenderer';
+
+let attackIdCounter = 1;
+
+export function dispatchBasicAttack() {
+  const p = state.player;
+  const attackConfig = state.assignedAttack || { id: 'Thrust' };
+  const sub = state.subStats;
+
+  // 참(斬) 스탯 및 서브스탯 기반 데미지 연산 (기초 대미지 12로 서바이벌 밸런스 조정)
+  const baseDmg = 12 + (state.stats.cham * 3);
+  const bonusDmg = sub ? sub.bonusAtkDmg || 0 : 0;
+  const finalBaseDmg = baseDmg + bonusDmg;
+
+  // 치명타 여부 계산
+  const critRate = sub ? sub.critRate || 0.05 : 0.05;
+  const isCrit = Math.random() < critRate;
+  const damage = Math.floor(finalBaseDmg * (isCrit ? 1.6 : 1.0));
+
+  // 검기 크기 보너스
+  const sizeBonus = sub ? sub.atkSizeBonus || 1.0 : 1.0;
+
+  // 플레이어바라보는 방향 또는 가까운 적 타겟팅
+  let targetAngle = p.angle;
+  let nearestDist = Infinity;
+  let nearestEnemy = null;
+
+  for (const enemy of state.enemies) {
+    const dist = Math.hypot(enemy.x - p.x, enemy.y - p.y);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestEnemy = enemy;
+    }
+  }
+
+  if (nearestEnemy && nearestDist < 350) {
+    targetAngle = Math.atan2(nearestEnemy.y - p.y, nearestEnemy.x - p.x);
+  }
+
+  Synth.playSlashSound(attackConfig.id);
+
+  // ⚔️ extraAtkCount (참 10% 울트라 레어) 수치에 따라 사출 횟수 증가 (기본 1발 + extraAtkCount)
+  const totalWaves = 1 + (sub ? sub.extraAtkCount || 0 : 0);
+  const angleStep = 0.22; // 2갈래 이상 확산 각도
+
+  for (let w = 0; w < totalWaves; w++) {
+    // 2발 이상일 때 중앙 기준 양갈래 부채꼴 확산 각도 연산
+    const spreadOffset = totalWaves > 1 ? (w - (totalWaves - 1) / 2) * angleStep : 0;
+    const waveAngle = targetAngle + spreadOffset;
+
+    if (attackConfig.id === 'Thrust') {
+      // 🗡️ 찌르기: 단일/좁은 집약 직진 빠른 관통 검격
+      const speed = 600;
+      state.attacks.push({
+        id: attackIdCounter++,
+        attackType: 'Thrust',
+        x: p.x,
+        y: p.y,
+        vx: Math.cos(waveAngle) * speed,
+        vy: Math.sin(waveAngle) * speed,
+        radius: 14 * sizeBonus,
+        damage,
+        life: 0.45,
+        maxLife: 0.45,
+        angle: waveAngle,
+        hitEnemies: new Set(),
+        isCrit
+      });
+    } else if (attackConfig.id === 'Slash') {
+      // ⚔️ 베기 (월아천충): 묵직한 중거리 광역 참격 파동
+      const speed = 165;
+      state.attacks.push({
+        id: attackIdCounter++,
+        attackType: 'Slash',
+        x: p.x + Math.cos(waveAngle) * 20,
+        y: p.y + Math.sin(waveAngle) * 20,
+        vx: Math.cos(waveAngle) * speed,
+        vy: Math.sin(waveAngle) * speed,
+        radius: 38 * sizeBonus,
+        damage: Math.floor(damage * 0.85),
+        life: 0.50,
+        maxLife: 0.50,
+        angle: waveAngle,
+        hitEnemies: new Set(),
+        isCrit
+      });
+    } else if (attackConfig.id === 'Circle') {
+      // 🔮 원형: 발동 즉시 플레이어 위치 중심 1.5배 대형 전방위 검격 폭발
+      state.attacks.push({
+        id: attackIdCounter++,
+        attackType: 'Circle',
+        x: p.x,
+        y: p.y,
+        vx: 0,
+        vy: 0,
+        radius: 120 * sizeBonus, // 1.5배 대형 검격 범위
+        damage: Math.floor(damage * 0.95),
+        life: 0.35,
+        maxLife: 0.35,
+        angle: 0,
+        hitEnemies: new Set(),
+        isCrit
+      });
+    } else if (attackConfig.id === 'Flurry') {
+      // ⚡ 난무: 좁은 집중 타겟 초고속 3연타 다단 히트
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          if (state.screen !== 'battle' || state.isGameOver) return;
+          const flurryAngle = waveAngle + (Math.random() - 0.5) * 0.2;
+          const speed = 550;
+          state.attacks.push({
+            id: attackIdCounter++,
+            attackType: 'Flurry',
+            x: p.x,
+            y: p.y,
+            vx: Math.cos(flurryAngle) * speed,
+            vy: Math.sin(flurryAngle) * speed,
+            radius: 12 * sizeBonus,
+            damage: Math.floor(damage * 0.5),
+            life: 0.3,
+            maxLife: 0.3,
+            angle: flurryAngle,
+            hitEnemies: new Set(),
+            isCrit
+          });
+        }, i * 70);
+      }
+    }
+  }
+}
+
+export function updateAttacks(dt: number) {
+  const sub = state.subStats;
+
+  for (let i = state.attacks.length - 1; i >= 0; i--) {
+    const atk = state.attacks[i];
+    atk.life -= dt;
+
+    if (atk.life <= 0) {
+      state.attacks.splice(i, 1);
+      continue;
+    }
+
+    atk.x += atk.vx * dt;
+    atk.y += atk.vy * dt;
+
+    // 적과의 피격 충돌 검사
+    for (let j = state.enemies.length - 1; j >= 0; j--) {
+      const enemy = state.enemies[j];
+      if (atk.hitEnemies.has(enemy.id)) continue;
+
+      const dist = Math.hypot(enemy.x - atk.x, enemy.y - atk.y);
+      if (dist < atk.radius + enemy.radius) {
+        atk.hitEnemies.add(enemy.id);
+
+        // 데미지 입히기
+        enemy.hp -= atk.damage;
+        Synth.playHitSound();
+
+        // 부드러운 유기적 물리 넉백 속도 임펄스 부여 (순간 텔레포트 뚝뚝 끊김 완전 차단)
+        const kbMult = sub ? sub.knockbackForce || 1.0 : 1.0;
+        const baseImpulse = atk.attackType === 'Slash' || atk.attackType === 'Thrust' ? 240 : 160;
+        const impulseSpeed = baseImpulse * kbMult;
+        const kbAngle = Math.atan2(enemy.y - atk.y, enemy.x - atk.x);
+
+        enemy.kbVx = Math.cos(kbAngle) * impulseSpeed;
+        enemy.kbVy = Math.sin(kbAngle) * impulseSpeed;
+
+        // 귀(鬼) 서브스탯 전용 둔화 보너스가 있을 때만 제한적 둔화 부여 (기본 히트 시 멈춤 버그 차단)
+        const slowRate = sub ? sub.bulletSlowBonus || 0 : 0;
+        if (slowRate > 0) {
+          enemy.slowTimer = 1.0;
+          enemy.slowFactor = Math.min(0.4, slowRate);
+        }
+
+        // 데미지 텍스트 및 파티클 생성
+        const textClr = atk.isCrit ? '#f59e0b' : '#38bdf8';
+        const txt = atk.isCrit ? `💥 ${atk.damage}` : `${atk.damage}`;
+        addFloatingText(enemy.x, enemy.y - 10, txt, textClr);
+        createHitParticles(enemy.x, enemy.y, textClr, 5);
+
+        // 적 사망 처리
+        if (enemy.hp <= 0) {
+          killEnemy(j, createHitParticles);
+        }
+
+        // 📌 찌르기(Thrust) 및 난무(Flurry)는 단일 타겟 피격 즉시 소멸 연출! (관통 금지)
+        if (atk.attackType === 'Thrust' || atk.attackType === 'Flurry') {
+          state.attacks.splice(i, 1);
+          break; // 즉시 탄환 제거 후 루프 탈출
+        }
+      }
+    }
+  }
+}
