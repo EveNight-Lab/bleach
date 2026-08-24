@@ -17,15 +17,24 @@ export function updatePlayer(
   const p = state.player;
   const sub = state.subStats;
 
+  // 0. 레벨업 선택 후 부드러운 게임 속도 복구 (Slow-Mo Resume Ramp Up)
+  if (state.resumeRampTimer !== undefined && state.resumeRampTimer > 0) {
+    state.resumeRampTimer -= dt;
+    const rampRatio = 1 - (state.resumeRampTimer / 0.8);
+    state.globalTimeScale = Math.min(1.0, Math.max(0.15, rampRatio));
+    if (state.resumeRampTimer <= 0) {
+      state.globalTimeScale = 1.0;
+      state.resumeRampTimer = undefined;
+    }
+  }
+
   // 1. 피격 무적 타이머 감쇄
   if (p.invincibleTimer > 0) {
     p.invincibleTimer -= dt;
   }
 
-  // 2. 순보 쿨타임 감쇄 (주 ス 스탯 쿨감 적용)
+  // 2. 순보 쿨타임 감쇄
   if (p.shunpoCooldown > 0) {
-    const cdReduction = sub ? sub.shunpoCdRed || 0 : 0;
-    const effectiveMaxCd = Math.max(0.6, p.shunpoCooldownMax * (1 - cdReduction));
     p.shunpoCooldown -= dt;
   }
 
@@ -99,11 +108,11 @@ export function triggerShunpo(): boolean {
   const p = state.player;
   const sub = state.subStats;
 
-  // 주(走) 스탯 쿨감(8%/pt) + 서브스탯 쿨감(shunpoCdRed) 합산 연산! (최대 75% 쿨감)
-  const juCdRed = state.stats.ju * 0.08;
+  // 📌 순보 쿨타임 설계: 기본 6.0초, 만렙(30렙) 풀스탯 투자 시에도 최저 3.0초 캡 (최대 50% 쿨감 제한)
+  const juCdRed = state.stats.ju * 0.015;
   const subCdRed = sub ? sub.shunpoCdRed || 0 : 0;
-  const totalCdRed = Math.min(0.75, juCdRed + subCdRed);
-  const effectiveMaxCd = Math.max(0.4, p.shunpoCooldownMax * (1 - totalCdRed));
+  const totalCdRed = Math.min(0.50, juCdRed + subCdRed);
+  const effectiveMaxCd = Math.max(3.0, p.shunpoCooldownMax * (1 - totalCdRed));
 
   if (p.shunpoCooldown > 0) return false;
 

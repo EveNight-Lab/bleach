@@ -54,19 +54,20 @@ export function spawnSingleEliteHollow() {
     type = 'Melee';
     name = '가이스트 호로 (■ 네모)';
     radius = 21;
-    baseHp = 170; // 2배 더 튼튼한 근거리 탱커!
-    baseSpeed = 204; // 플레이어 속도(240)의 0.85배 쾌속 추적!
-    damage = 22;
+    baseHp = 340; // 2배 강력한 정예 탱커!
+    baseSpeed = 204;
+    damage = 44; // 2배 데미지!
     color = '#ef4444';
-    expValue = 24;
+    expValue = 48; // 2배 경험치
   } else if (rand < 0.75) {
     type = 'MidDash';
     name = '전술 세모 호로 (▲ 세모)';
     radius = 20;
-    baseHp = 110;
+    baseHp = 220; // 2배 체력
     baseSpeed = 120;
-    damage = 26;
+    damage = 52; // 2배 데미지
     color = '#f59e0b';
+    expValue = 56;
 
     const pRand = Math.random();
     if (pRand < 0.35) pattern = 'Line';
@@ -76,11 +77,11 @@ export function spawnSingleEliteHollow() {
     type = 'Projectile';
     name = '세로 마름모 호로 (◆ 마름모)';
     radius = 20;
-    baseHp = 80;
+    baseHp = 160; // 2배 체력
     baseSpeed = 95;
-    damage = 22;
+    damage = 44; // 2배 데미지
     color = '#10b981';
-    expValue = 28;
+    expValue = 56;
   }
 
   const hpMultiplier = 1 + (elapsedTime / 40);
@@ -121,13 +122,13 @@ export function updateEnemies(
   const mobDt = dt * state.globalTimeScale;
   const elapsedTime = state.gameTime || 0;
 
-  // 📌 2트랙 무한 연속 가속 스폰 시스템 (Track 1: 긴급 충원, Track 2: 정기 파동 가속)
-  const regularInterval = Math.max(0.02, 2.2 * Math.pow(0.82, elapsedTime / 25)); // 2.2초 -> 0.02초 무한 가속
-  const maxEnemies = Math.min(80, 8 + Math.floor(elapsedTime / 10) * 2); // 최대 80마리 무한 밀도 가속
-  const minEnemies = Math.min(40, 5 + Math.floor(elapsedTime / 20) * 2); // 최소 40마리 즉각 충원
-  const refillInterval = Math.max(0.04, 0.35 * Math.pow(0.85, elapsedTime / 30));
+  // 📌 2트랙 쾌적 정예 스폰 시스템 (스폰 간격 2배 확대, 몬스터 밀도 절반 감소, 체력/공격력 2배 정예화)
+  const regularInterval = Math.max(0.20, 4.4 * Math.pow(0.85, elapsedTime / 30));
+  const maxEnemies = Math.min(35, 6 + Math.floor(elapsedTime / 15));
+  const minEnemies = Math.min(18, 4 + Math.floor(elapsedTime / 25));
+  const refillInterval = Math.max(0.08, 0.70 * Math.pow(0.88, elapsedTime / 35));
 
-  // 1트랙: 긴급 급속 충원 트랙 (최소 호로 수 미달 시 초고속 충원)
+  // 1트랙: 긴급 급속 충원 트랙
   if (state.enemies.length < minEnemies) {
     fastRefillTimer += dt;
     if (fastRefillTimer >= refillInterval) {
@@ -138,7 +139,7 @@ export function updateEnemies(
     fastRefillTimer = 0;
   }
 
-  // 2트랙: 정기 지속 무한 가속 트랙 (시간 경과에 따라 무한히 빨라지는 파동)
+  // 2트랙: 정기 지속 스폰 트랙
   regularSpawnTimer += dt;
   if (regularSpawnTimer >= regularInterval) {
     regularSpawnTimer = 0;
@@ -161,19 +162,27 @@ export function updateEnemies(
       currentSpeed *= (1 - (enemy.slowFactor || 0.3));
     }
 
-    const dx = p.x - enemy.x;
-    const dy = p.y - enemy.y;
-    const dist = Math.hypot(dx, dy);
+    // 📌 외곽 뺑뺑이 방지 길목 예측 연산 (Anti-Outer-Circling Flanking Interception)
+    const isPlayerNearBorder = Math.abs(p.x) > (state.arena.width / 2 - 240) || Math.abs(p.y) > (state.arena.height / 2 - 240);
+    const isPlayerMoving = p.vx !== 0 || p.vy !== 0;
+
+    // 플레이어가 외곽에서 돌고 있을 때 진행 길목(predX/Y)을 선제적으로 차단!
+    const targetX = (isPlayerNearBorder && isPlayerMoving && i % 2 === 0) ? p.x + p.vx * 0.75 : p.x;
+    const targetY = (isPlayerNearBorder && isPlayerMoving && i % 2 === 0) ? p.y + p.vy * 0.75 : p.y;
+
+    const dx = targetX - enemy.x;
+    const dy = targetY - enemy.y;
+    const dist = Math.hypot(p.x - enemy.x, p.y - enemy.y);
 
     // 📌 중거리 전술 삼각형 호로 (MidDash) 상태 머신
     if (enemy.type === 'MidDash') {
       updateMidDashHollow(enemy, p, mobDt, onGameOver);
     } else if (enemy.type === 'Projectile') {
-      // 📌 세로 사출 호로 (Projectile) AI: 플레이어 근접 시 조준 중단 후 1.25배 쾌속 후퇴(Flee)!
+      // 📌 세로 사출 호로 (Projectile) AI: 플레이어 근접 시 1.25배 쾌속 후퇴(Flee)!
       const keepDist = 260;
       if (dist > 0.001) {
-        const dirX = dx / dist;
-        const dirY = dy / dist;
+        const dirX = (p.x - enemy.x) / dist;
+        const dirY = (p.y - enemy.y) / dist;
 
         if (dist < keepDist) {
           // 🏃 근접 접근 시: 1.25배 속도로 도망가며 조준 및 세로 충전 리셋!
@@ -182,9 +191,11 @@ export function updateEnemies(
           enemy.ceroCooldown = Math.max(2.0, enemy.ceroCooldown || 2.0);
           enemy.lockedAngle = undefined;
         } else if (dist > keepDist + 60) {
-          // 적정 사거리 밖: 사거리 안으로 전진
-          enemy.x += dirX * currentSpeed * mobDt;
-          enemy.y += dirY * currentSpeed * mobDt;
+          // 적정 사거리 밖: 길목 예상 지점 또는 플레이어 방향 전진
+          const moveDx = (dx !== 0 ? dx / Math.hypot(dx, dy) : dirX);
+          const moveDy = (dy !== 0 ? dy / Math.hypot(dx, dy) : dirY);
+          enemy.x += moveDx * currentSpeed * mobDt;
+          enemy.y += moveDy * currentSpeed * mobDt;
         }
 
         // 안전 사거리(>=260px) 유지 시에만 세로 조준 및 70% 고정 락 발사!
@@ -195,7 +206,9 @@ export function updateEnemies(
           if (enemy.ceroCooldown <= 2.0) {
             const chargeRatio = 1 - (enemy.ceroCooldown / 2.0);
             if (chargeRatio < 0.70 || enemy.lockedAngle === undefined) {
-              enemy.lockedAngle = Math.atan2(dy, dx);
+              const aimDx = p.x - enemy.x;
+              const aimDy = p.y - enemy.y;
+              enemy.lockedAngle = Math.atan2(aimDy, aimDx);
             }
           } else {
             enemy.lockedAngle = undefined;
@@ -203,7 +216,7 @@ export function updateEnemies(
 
           if (enemy.ceroCooldown <= 0) {
             enemy.ceroCooldown = 3.5;
-            const fireAngle = enemy.lockedAngle !== undefined ? enemy.lockedAngle : Math.atan2(dy, dx);
+            const fireAngle = enemy.lockedAngle !== undefined ? enemy.lockedAngle : Math.atan2(p.y - enemy.y, p.x - enemy.x);
             const fireVx = Math.cos(fireAngle);
             const fireVy = Math.sin(fireAngle);
             spawnCeroProjectile(enemy.x, enemy.y, fireVx, fireVy, enemy.damage);
@@ -212,20 +225,26 @@ export function updateEnemies(
         }
       }
     } else {
-      // 📌 일반 근거리 추적 호로 (Melee)
-      if (dist > 0.001) {
-        enemy.x += (dx / dist) * currentSpeed * mobDt;
-        enemy.y += (dy / dist) * currentSpeed * mobDt;
+      // 📌 일반 근거리 추적 호로 (Melee): 외곽 뺑뺑이 시 길목 선점 이동
+      const moveDist = Math.hypot(dx, dy);
+      if (moveDist > 0.001) {
+        enemy.x += (dx / moveDist) * currentSpeed * mobDt;
+        enemy.y += (dy / moveDist) * currentSpeed * mobDt;
       }
     }
 
-    // 📌 몬스터-몬스터 밀쳐내기 및 충돌 물리 (Hollow Mutual Pushback & Separation)
+    // 📌 동일 타입 전술 호로 간격 넓히기 (110px) 및 몬스터-몬스터 밀쳐내기
     for (let j = i - 1; j >= 0; j--) {
       const other = state.enemies[j];
       const mdx = enemy.x - other.x;
       const mdy = enemy.y - other.y;
       const mdist = Math.hypot(mdx, mdy);
-      const minDist = enemy.radius + other.radius;
+
+      // 동일 타입(MidDash / Projectile) 몬스터끼리는 110px 거리 확보하여 필드 전술 산개!
+      let minDist = enemy.radius + other.radius;
+      if (enemy.type === other.type && (enemy.type === 'MidDash' || enemy.type === 'Projectile')) {
+        minDist = 110;
+      }
 
       if (mdist < minDist && mdist > 0) {
         const overlap = (minDist - mdist) * 0.45;

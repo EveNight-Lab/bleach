@@ -100,7 +100,7 @@ export const state: GameState = {
     angle: 0,
     invincibleTimer: 0,
     shunpoCooldown: 0,
-    shunpoCooldownMax: 2.0,
+    shunpoCooldownMax: 6.0,
     emergencyShunpoTriggered: false
   },
 

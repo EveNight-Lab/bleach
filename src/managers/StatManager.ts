@@ -48,7 +48,7 @@ const SUB_POOLS: Record<keyof Stats, BaseSubDef[]> = {
   ],
   ju: [
     { key: 'bonusMoveSpeed', label: '보법 이동 속도', baseVal: 0.03, isPercent: true, unit: '%', weight: 100 },
-    { key: 'shunpoCdRed', label: '순보 쿨타임 단축', baseVal: 0.04, isPercent: true, unit: '%', weight: 80 },
+    { key: 'shunpoCdRed', label: '순보 쿨타임 단축', baseVal: 0.025, isPercent: true, unit: '%', weight: 80 },
     { key: 'shunpoInvinc', label: '순보 무적 연장', baseVal: 0.05, isPercent: false, unit: '초', weight: 70 },
     { key: 'shunpoDmg', label: '순보 충격파 대미지', baseVal: 5, isPercent: false, unit: '', weight: 40 },
     { key: 'shunpoHeal', label: '순보 체력 회복', baseVal: 0.2, isPercent: false, unit: '', weight: 10 }
@@ -169,11 +169,13 @@ export function applyCardSelection(card: CardOption, onTriggerModal?: () => void
     state.player.hp = Math.min(state.player.maxHp, state.player.hp + hpGain);
   }
 
-  // 4. 연속 레벨업 남아있는 경우 다음 모달 연동, 아니면 언파즈 처리!
+  // 4. 연속 레벨업 남아있는 경우 다음 모달 연동, 아니면 언파즈 및 안전 재진입 램프업 처리!
   if (state.exp >= state.maxExp && onTriggerModal) {
     state.isPaused = true;
     onTriggerModal();
   } else {
     state.isPaused = false;
+    state.player.invincibleTimer = Math.max(state.player.invincibleTimer, 0.5); // 📌 선택 직후 0.5초 피격 무적 부여!
+    state.resumeRampTimer = 0.8; // 📌 0.8초 동안 부드럽게 정상 속도로 회복하는 슬로우 모션 램프업!
   }
 }
