@@ -85,11 +85,13 @@ function update(
   // 2. 플레이어 이동 및 무적
   updatePlayer(dt, onGameOverTrigger, () => checkExpLevelUp(onLevelUpTrigger));
 
-  // 3. 자동 평타 사출
+  // 3. 자동 평타 사출 (스탯 및 선택지 상승폭 기반 자연 쿨타임 감소)
   state.attackTimer += dt;
   const baseCd = state.assignedAttack && state.assignedAttack.baseCd ? state.assignedAttack.baseCd : 0.35;
-  const atkSpdBonus = state.subStats ? state.subStats.atkSpeedBonus || 0 : 0;
-  const currentAttackCd = Math.max(0.14, baseCd * (1 - (state.stats.cham * 0.04 + atkSpdBonus)));
+  const chamSpdRed = state.stats.cham * 0.015;
+  const subAtkSpdRed = state.subStats ? state.subStats.atkSpeedBonus || 0 : 0;
+  const totalAtkSpdRed = chamSpdRed + subAtkSpdRed;
+  const currentAttackCd = Math.max(0.08, baseCd * (1 - totalAtkSpdRed));
 
   if (state.attackTimer >= currentAttackCd) {
     state.attackTimer = 0;

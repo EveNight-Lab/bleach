@@ -104,6 +104,7 @@ export interface Enemy {
   slowFactor?: number;
   kbVx?: number;
   kbVy?: number;
+  isPredictive?: boolean; // 🎯 40% 확률로 생성되는 길목 예측 차단 AI 호로 여부
 }
 
 export interface EnemyProjectile {

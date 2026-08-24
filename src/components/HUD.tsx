@@ -32,7 +32,7 @@ export const HUD: React.FC<HUDProps> = ({ gameState, onPauseToggle }) => {
 
           {/* HP */}
           <div className="font-mono text-rose-400">
-            <span>HP {Math.ceil(player.hp)}</span>
+            <span>HP {Math.round(player.hp)} / {Math.round(player.maxHp)}</span>
           </div>
 
           <div className="h-3 w-px bg-slate-700/80" />

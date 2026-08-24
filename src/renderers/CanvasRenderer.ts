@@ -113,7 +113,7 @@ export function renderCanvas(ctx: CanvasRenderingContext2D, width: number, heigh
   }
 }
 
-// 60px 타일 전술 바닥 및 청록색 영압 장막 (Spirit Barrier)
+// 60px 타일 전술 바닥 및 청록색 영압 장막 (Spirit Barrier Glow)
 function drawArenaGrid(ctx: CanvasRenderingContext2D) {
   const halfW = state.arena.width / 2;
   const halfH = state.arena.height / 2;
@@ -167,7 +167,7 @@ function drawEnemyTelegraphs(ctx: CanvasRenderingContext2D) {
     ctx.translate(anchorX, anchorY);
     ctx.rotate(anchorAngle);
 
-    if (enemy.pattern === 'Line') {
+    if (enemy.pattern === 'Line' || !enemy.pattern) {
       // 📌 Line: 600px x 68px 차오르는 게이지 회랑
       // 1. 은은한 전체 구역 가이드 박스
       ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
@@ -185,102 +185,6 @@ function drawEnemyTelegraphs(ctx: CanvasRenderingContext2D) {
       if (isCharging && fillW > 2) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(fillW - 3, -34, 4, 68);
-      }
-    } else if (enemy.pattern === 'Fan') {
-      // 📌 Fan: 270px 120도 차오르는 부채꼴 게이지
-      // 1. 은은한 전체 부채꼴 가이드
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, 270, -Math.PI / 3, Math.PI / 3);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // 2. 0% -> 100% 중심에서 외곽으로 차오르는 반경 게이지
-      const fillR = 270 * progress;
-      if (fillR > 2) {
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.65)';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.arc(0, 0, fillR, -Math.PI / 3, Math.PI / 3);
-        ctx.closePath();
-        ctx.fill();
-
-        // 선단부 흰색 경계 호
-        if (isCharging) {
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(0, 0, fillR, -Math.PI / 3, Math.PI / 3);
-          ctx.stroke();
-        }
-      }
-
-      if (isAction) {
-        const actProg = enemy.actionProgress || 0;
-        const currentRange = 270 * Math.min(1.0, actProg * 1.3);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 6;
-        ctx.shadowColor = '#f59e0b';
-        ctx.shadowBlur = 14;
-        ctx.beginPath();
-        ctx.arc(0, 0, currentRange, -Math.PI / 3, Math.PI / 3);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
-    } else if (enemy.pattern === 'Diamond') {
-      // 📌 Diamond: 착지 지점에 240px 차오르는 마름모 게이지
-      ctx.restore();
-      ctx.save();
-
-      const landX = enemy.targetLandingX !== undefined ? enemy.targetLandingX : anchorX;
-      const landY = enemy.targetLandingY !== undefined ? enemy.targetLandingY : anchorY;
-
-      // 도약 궤적 점선
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.beginPath();
-      ctx.moveTo(anchorX, anchorY);
-      ctx.lineTo(landX, landY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // 1. 은은한 전체 마름모 가이드
-      ctx.translate(landX, landY);
-      const maxR = 240;
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, -maxR);
-      ctx.lineTo(maxR, 0);
-      ctx.lineTo(0, maxR);
-      ctx.lineTo(-maxR, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // 2. 0% -> 100% 중심에서 커지는 충전 마름모 게이지
-      const fillR = maxR * progress;
-      if (fillR > 2) {
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.65)';
-        ctx.beginPath();
-        ctx.moveTo(0, -fillR);
-        ctx.lineTo(fillR, 0);
-        ctx.lineTo(0, fillR);
-        ctx.lineTo(-fillR, 0);
-        ctx.closePath();
-        ctx.fill();
-
-        if (isCharging) {
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-        }
       }
     }
 
@@ -406,8 +310,14 @@ function drawEnemies(ctx: CanvasRenderingContext2D) {
       ctx.globalAlpha = 0.4;
     }
 
-    ctx.shadowColor = enemy.color;
-    ctx.shadowBlur = 12;
+    // 🎯 40% 확률 길목 예측 차단 AI 호로 (붉은 전술 그림자 글로우)
+    if (enemy.isPredictive) {
+      ctx.shadowColor = '#f43f5e';
+      ctx.shadowBlur = 18;
+    } else {
+      ctx.shadowColor = enemy.color;
+      ctx.shadowBlur = 10;
+    }
 
     ctx.fillStyle = enemy.color;
     ctx.beginPath();

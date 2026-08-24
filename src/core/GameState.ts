@@ -12,7 +12,7 @@ export const BASIC_ATTACKS: Record<string, BasicAttackConfig> = {
     name: '찌르기 (Thrust)',
     shape: '📌 찌르기',
     icon: '🗡️',
-    baseCd: 0.35,
+    baseCd: 0.7, // 깔끔한 0.7초 쿨타임
     desc: '폭이 좁고 사거리가 긴 전방 일직선 관통 검기 사출'
   },
   Slash: {
@@ -20,7 +20,7 @@ export const BASIC_ATTACKS: Record<string, BasicAttackConfig> = {
     name: '베기 (Slash)',
     shape: '📌 베기',
     icon: '⚔️',
-    baseCd: 0.88,
+    baseCd: 1.8, // 정형화된 1.8초 쿨타임
     desc: '전방으로 천천히 오랫동안 뻗어나가는 묵직한 관통 초승달 검기 파동'
   },
   Circle: {
@@ -28,7 +28,7 @@ export const BASIC_ATTACKS: Record<string, BasicAttackConfig> = {
     name: '원형 (Circle)',
     shape: '📌 원형',
     icon: '🔮',
-    baseCd: 0.42,
+    baseCd: 0.8, // 정형화된 0.8초 쿨타임
     desc: '360도 전방위로 영압 파동을 분출하여 사방의 적 타격'
   },
   Flurry: {
@@ -36,7 +36,7 @@ export const BASIC_ATTACKS: Record<string, BasicAttackConfig> = {
     name: '난무 (Flurry)',
     shape: '📌 난무',
     icon: '⚡',
-    baseCd: 0.32,
+    baseCd: 0.6, // 정형화된 0.6초 쿨타임
     desc: '매우 빠른 속도로 한 번에 3연타 다단 히트'
   }
 };

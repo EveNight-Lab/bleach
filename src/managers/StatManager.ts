@@ -32,33 +32,33 @@ interface BaseSubDef {
 
 const SUB_POOLS: Record<keyof Stats, BaseSubDef[]> = {
   cham: [
-    { key: 'bonusAtkDmg', label: '참격 피해량', baseVal: 1, isPercent: false, unit: '', weight: 100 },
-    { key: 'atkSpeedBonus', label: '공격 속도', baseVal: 0.04, isPercent: true, unit: '%', weight: 80 },
-    { key: 'atkSizeBonus', label: '검기 범위 크기', baseVal: 0.05, isPercent: true, unit: '%', weight: 80 },
-    { key: 'critRate', label: '치명타 확률', baseVal: 0.02, isPercent: true, unit: '%', weight: 70 },
-    { key: 'knockbackForce', label: '넉백 파워', baseVal: 0.08, isPercent: true, unit: '%', weight: 70 },
-    { key: 'extraAtkCount', label: '참격 사출 횟수', baseVal: 1, isPercent: false, unit: '', weight: 10 }
+    { key: 'bonusAtkDmg', label: '참격 피해량', baseVal: 4, isPercent: false, unit: '', weight: 100 },
+    { key: 'atkSpeedBonus', label: '공격 속도', baseVal: 0.015, isPercent: true, unit: '%', weight: 80 },
+    { key: 'atkSizeBonus', label: '검기 범위 크기', baseVal: 0.02, isPercent: true, unit: '%', weight: 80 },
+    { key: 'critRate', label: '치명타 확률', baseVal: 0.01, isPercent: true, unit: '%', weight: 70 },
+    { key: 'knockbackForce', label: '넉백 파워', baseVal: 0.04, isPercent: true, unit: '%', weight: 70 },
+    { key: 'extraAtkCount', label: '참격 사출 횟수', baseVal: 1, isPercent: false, unit: '발', weight: 5 }
   ],
   gwon: [
-    { key: 'hpRegen5s', label: '5초당 체력 회복', baseVal: 0.1, isPercent: false, unit: '', weight: 60 },
-    { key: 'damageRed', label: '피격 피해 감쇄', baseVal: 0.02, isPercent: true, unit: '%', weight: 90 },
+    { key: 'hpRegen5s', label: '5초당 체력 회복', baseVal: 0.5, isPercent: false, unit: '', weight: 60 },
+    { key: 'damageRed', label: '피격 피해 감쇄', baseVal: 0.01, isPercent: true, unit: '%', weight: 90 },
     { key: 'invincDuration', label: '피격 무적 시간', baseVal: 0.05, isPercent: false, unit: '초', weight: 80 },
-    { key: 'bodyReflectKb', label: '체술 넉백 방어', baseVal: 0.06, isPercent: true, unit: '%', weight: 80 },
-    { key: 'retaliationPulse', label: '피격시 반격 충격파', baseVal: 1, isPercent: false, unit: '', weight: 10 }
+    { key: 'bodyReflectKb', label: '체술 넉백 방어', baseVal: 0.03, isPercent: true, unit: '%', weight: 80 },
+    { key: 'retaliationPulse', label: '피격시 반격 충격파', baseVal: 1, isPercent: false, unit: '', weight: 5 }
   ],
   ju: [
-    { key: 'bonusMoveSpeed', label: '보법 이동 속도', baseVal: 0.03, isPercent: true, unit: '%', weight: 100 },
-    { key: 'shunpoCdRed', label: '순보 쿨타임 단축', baseVal: 0.025, isPercent: true, unit: '%', weight: 80 },
+    { key: 'bonusMoveSpeed', label: '보법 이동 속도', baseVal: 0.015, isPercent: true, unit: '%', weight: 100 },
+    { key: 'shunpoCdRed', label: '순보 쿨타임 단축', baseVal: 0.015, isPercent: true, unit: '%', weight: 80 },
     { key: 'shunpoInvinc', label: '순보 무적 연장', baseVal: 0.05, isPercent: false, unit: '초', weight: 70 },
-    { key: 'shunpoDmg', label: '순보 충격파 대미지', baseVal: 5, isPercent: false, unit: '', weight: 40 },
-    { key: 'shunpoHeal', label: '순보 체력 회복', baseVal: 0.2, isPercent: false, unit: '', weight: 10 }
+    { key: 'shunpoDmg', label: '순보 충격파 대미지', baseVal: 4, isPercent: false, unit: '', weight: 40 },
+    { key: 'shunpoHeal', label: '순보 체력 회복', baseVal: 0.5, isPercent: false, unit: '', weight: 5 }
   ],
   gwi: [
-    { key: 'auraRadius', label: '영압 오라 범위', baseVal: 8, isPercent: false, unit: 'px', weight: 90 },
-    { key: 'auraDmgSec', label: '영압 오라 지속 대미지', baseVal: 3, isPercent: false, unit: '/초', weight: 80 },
-    { key: 'magnetRadius', label: '결정 흡수 범위', baseVal: 15, isPercent: false, unit: 'px', weight: 90 },
-    { key: 'reatsuSplashDmg', label: '영압 피격 충격파', baseVal: 4, isPercent: false, unit: '', weight: 70 },
-    { key: 'kidoOverloadAura', label: '처치시 오라 폭주', baseVal: 1, isPercent: false, unit: '', weight: 10 }
+    { key: 'auraRadius', label: '영압 오라 범위', baseVal: 5, isPercent: false, unit: 'px', weight: 90 },
+    { key: 'auraDmgSec', label: '영압 오라 지속 대미지', baseVal: 1.5, isPercent: false, unit: '/초', weight: 80 },
+    { key: 'magnetRadius', label: '결정 흡수 범위', baseVal: 10, isPercent: false, unit: 'px', weight: 90 },
+    { key: 'reatsuSplashDmg', label: '영압 피격 충격파', baseVal: 3, isPercent: false, unit: '', weight: 70 },
+    { key: 'kidoOverloadAura', label: '처치시 오라 폭주', baseVal: 1, isPercent: false, unit: '', weight: 5 }
   ]
 };
 
@@ -73,10 +73,10 @@ function rollWeightedSubDef(pool: BaseSubDef[]): BaseSubDef {
 }
 
 const PARENT_CONFIGS: Record<keyof Stats, { name: string; icon: string; color: string }> = {
-  cham: { name: '참 (斬 - 검술)', icon: '⚔️', color: 'text-red-400 border-red-500/40 bg-red-950/20' },
-  gwon: { name: '권 (拳 - 체술)', icon: '👊', color: 'text-amber-400 border-amber-500/40 bg-amber-950/20' },
-  ju: { name: '주 (走 - 보법)', icon: '⚡', color: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/20' },
-  gwi: { name: '귀 (鬼 - 영압)', icon: '🔮', color: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/20' }
+  cham: { name: '참', icon: '⚔️', color: 'text-red-400 border-red-500/40 bg-red-950/20' },
+  gwon: { name: '권', icon: '👊', color: 'text-amber-400 border-amber-500/40 bg-amber-950/20' },
+  ju: { name: '주', icon: '⚡', color: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/20' },
+  gwi: { name: '귀', icon: '🔮', color: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/20' }
 };
 
 export function generateCardOptions(): CardOption[] {
@@ -119,16 +119,36 @@ export function generateCardOptions(): CardOption[] {
 
     const calcVal = (def: BaseSubDef) => {
       const raw = def.baseVal * finalMult;
-      if (def.isPercent) return raw;
-      // 1 미만 소수점 수치(0.2초, 0.6 등)는 정수 반올림 대신 소수점 1자리 보존!
-      return def.baseVal < 2 ? Number(raw.toFixed(1)) : Math.round(raw);
+      if (def.isPercent) {
+        // 📌 0.5% 단위 완벽 정형화 (1.5%, 2.0%, 2.5%, 3.0% 등)
+        const pctRaw = raw * 100;
+        const pctClean = Math.round(pctRaw * 2) / 2;
+        return pctClean / 100;
+      }
+      // 📌 횟수/개수형 스탯(extraAtkCount 등)은 무조건 정수(+1발, +2발) 보장!
+      if (def.key === 'extraAtkCount' || def.key === 'retaliationPulse' || def.key === 'kidoOverloadAura') {
+        return Math.max(1, Math.round(raw));
+      }
+      // 시간/치유형 수치는 0.5 / 0.1 단위 정형화
+      if (def.unit === '초' || def.unit === 's') {
+        return Math.round(raw * 10) / 10;
+      }
+      return def.baseVal < 1 ? Math.round(raw * 2) / 2 : Math.round(raw);
     };
 
     const val1 = calcVal(subDef1);
     const val2 = calcVal(subDef2);
 
-    const txt1 = subDef1.isPercent ? `+${Math.round(val1 * 100)}${subDef1.unit}` : `+${val1}${subDef1.unit}`;
-    const txt2 = subDef2.isPercent ? `+${Math.round(val2 * 100)}${subDef2.unit}` : `+${val2}${subDef2.unit}`;
+    const formatTxt = (def: BaseSubDef, val: number) => {
+      if (def.isPercent) {
+        const pct = Math.round(val * 200) / 2;
+        return `+${pct}${def.unit}`;
+      }
+      return `+${val}${def.unit}`;
+    };
+
+    const txt1 = formatTxt(subDef1, val1);
+    const txt2 = formatTxt(subDef2, val2);
 
     const subEffects: SubStatEffect[] = [
       { key: subDef1.key, label: subDef1.label, valText: txt1, addVal: val1 },

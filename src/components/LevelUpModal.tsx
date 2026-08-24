@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Flame } from 'lucide-react';
 import { CardOption } from '../types/game';
 import { generateCardOptions, applyCardSelection } from '../managers/StatManager';
+import { restoreWindowFocus } from '../core/InputManager';
 import { state } from '../core/GameState';
 
 interface LevelUpModalProps {
@@ -12,26 +13,19 @@ interface LevelUpModalProps {
 
 export const LevelUpModal: React.FC<LevelUpModalProps> = ({ isOpen, onClose, onReTriggerLevelUp }) => {
   const [cards, setCards] = useState<CardOption[]>([]);
-  const [rerollCount, setRerollCount] = useState<number>(2); // 레벨업당 2회 재추첨 기회
 
   useEffect(() => {
     if (isOpen) {
       setCards(generateCardOptions());
-      setRerollCount(2); // 모달 오픈 시 2회 재추첨 리셋
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSelectCard = (card: CardOption) => {
+    restoreWindowFocus();
     onClose();
     applyCardSelection(card, onReTriggerLevelUp);
-  };
-
-  const handleReroll = () => {
-    if (rerollCount <= 0) return;
-    setRerollCount((prev) => prev - 1);
-    setCards(generateCardOptions());
   };
 
   const getTierStyle = (tier: CardOption['tier']) => {
@@ -57,7 +51,7 @@ export const LevelUpModal: React.FC<LevelUpModalProps> = ({ isOpen, onClose, onR
         </h2>
 
         {/* 3 Horizontal/Grid Cards (Always 3 columns in Landscape!) */}
-        <div className="w-full grid grid-cols-3 gap-1.5 sm:gap-3 mb-2">
+        <div className="w-full grid grid-cols-3 gap-1.5 sm:gap-3">
           {cards.map((card) => {
             return (
               <button
@@ -94,21 +88,6 @@ export const LevelUpModal: React.FC<LevelUpModalProps> = ({ isOpen, onClose, onR
               </button>
             );
           })}
-        </div>
-
-        {/* Reroll Button (카드 재추첨) */}
-        <div className="w-full flex items-center justify-center">
-          <button
-            onClick={handleReroll}
-            disabled={rerollCount <= 0}
-            className={`px-3 py-1 rounded-lg font-bold text-[10px] sm:text-xs flex items-center gap-1.5 border transition-all duration-200 shadow-sm ${
-              rerollCount > 0
-                ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/50 hover:border-amber-400 hover:scale-105 active:scale-95 cursor-pointer'
-                : 'bg-slate-900 text-slate-500 border-slate-800 cursor-not-allowed opacity-60'
-            }`}
-          >
-            <span>카드 재추첨 (남은 횟수: {rerollCount}회)</span>
-          </button>
         </div>
       </div>
     </div>

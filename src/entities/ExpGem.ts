@@ -32,7 +32,7 @@ export function updateExpGems(dt: number, onLevelUpCheck: () => void) {
     const dist = Math.hypot(dx, dy);
 
     // 자석 범위 안이면 플레이어로 빠른 이동
-    if (dist < effectiveMagnetRadius) {
+    if (dist < effectiveMagnetRadius && dist > 0) {
       const pullSpeed = Math.min(800, 350 + (effectiveMagnetRadius - dist) * 2.5);
       gem.x += (dx / dist) * pullSpeed * dt;
       gem.y += (dy / dist) * pullSpeed * dt;

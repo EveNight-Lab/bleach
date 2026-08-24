@@ -2,7 +2,7 @@
  * 블리치 사신 서바이벌 - 사신 플레이어 엔티티 로직
  */
 
-import { state } from '../core/GameState';
+import { state, wrapToroidal } from '../core/GameState';
 import { keysPressed, joystickState } from '../core/InputManager';
 import { Synth } from '../core/AudioManager';
 import { createShunpoAfterimages } from '../renderers/CanvasRenderer';
@@ -49,14 +49,14 @@ export function updatePlayer(
     hpRegenTimer = 0;
   }
 
-  // 4. 방향 벡터 계산 (키보드 + 모바일 가상 조이스틱 통합)
+  // 4. 방향 벡터 계산 (키보드 WASD / 화살표 / 한글 IME / 터치 조이스틱 통합)
   let moveX = 0;
   let moveY = 0;
 
-  if (keysPressed['KeyW'] || keysPressed['ArrowUp'] || keysPressed['w'] || keysPressed['W'] || keysPressed['ㅈ']) moveY -= 1;
-  if (keysPressed['KeyS'] || keysPressed['ArrowDown'] || keysPressed['s'] || keysPressed['S'] || keysPressed['ㄴ']) moveY += 1;
-  if (keysPressed['KeyA'] || keysPressed['ArrowLeft'] || keysPressed['a'] || keysPressed['A'] || keysPressed['ㅁ']) moveX -= 1;
-  if (keysPressed['KeyD'] || keysPressed['ArrowRight'] || keysPressed['d'] || keysPressed['D'] || keysPressed['ㅇ']) moveX += 1;
+  if (keysPressed['w']) moveY -= 1;
+  if (keysPressed['s']) moveY += 1;
+  if (keysPressed['a']) moveX -= 1;
+  if (keysPressed['d']) moveX += 1;
 
   if (moveX !== 0 && moveY !== 0) {
     moveX *= Math.SQRT1_2;
@@ -69,9 +69,10 @@ export function updatePlayer(
     moveY = Math.sin(joystickState.angle) * joystickState.intensity;
   }
 
-  // 주(走) 스탯 이동속도 보너스 연산
-  const moveSpeedBonus = sub ? sub.bonusMoveSpeed || 0 : 0;
-  let currentSpeed = p.baseSpeed * (1 + (state.stats.ju * 0.08) + moveSpeedBonus);
+  // 주(走) 스탯(1.5%/pt) + 서브스탯 이동속도 보너스 합산 연산
+  const juSpeed = state.stats.ju * 0.015;
+  const subSpeed = sub ? sub.bonusMoveSpeed || 0 : 0;
+  let currentSpeed = p.baseSpeed * (1 + juSpeed + subSpeed);
 
   // ⚡ 불릿 타임 (매트릭스 슬로우 모션) 발동 동안 플레이어 역시 50% 정갈하게 완속 연출!
   if (state.bulletTimeTimer > 0) {
@@ -89,7 +90,7 @@ export function updatePlayer(
     p.angle = Math.atan2(moveY, moveX);
   }
 
-  // 바운더리 제한 (아레나 구역 내)
+  // 📌 1620x1290 영압 장막 바운더리 수치 클램핑
   const halfW = state.arena.width / 2;
   const halfH = state.arena.height / 2;
   p.x = Math.max(-halfW + p.radius, Math.min(halfW - p.radius, p.x));
@@ -108,11 +109,11 @@ export function triggerShunpo(): boolean {
   const p = state.player;
   const sub = state.subStats;
 
-  // 📌 순보 쿨타임 설계: 기본 6.0초, 만렙(30렙) 풀스탯 투자 시에도 최저 3.0초 캡 (최대 50% 쿨감 제한)
+  // 주(走) 스탯(1.5%/pt) + 서브스탯 쿨감(shunpoCdRed) 상승폭 기반 연산
   const juCdRed = state.stats.ju * 0.015;
   const subCdRed = sub ? sub.shunpoCdRed || 0 : 0;
-  const totalCdRed = Math.min(0.50, juCdRed + subCdRed);
-  const effectiveMaxCd = Math.max(3.0, p.shunpoCooldownMax * (1 - totalCdRed));
+  const totalCdRed = juCdRed + subCdRed;
+  const effectiveMaxCd = Math.max(0.5, p.shunpoCooldownMax * (1 - totalCdRed));
 
   if (p.shunpoCooldown > 0) return false;
 
@@ -135,7 +136,7 @@ export function triggerShunpo(): boolean {
   p.x += Math.cos(dashAngle) * dashDist;
   p.y += Math.sin(dashAngle) * dashDist;
 
-  // 바운더리 바깥 탈출 방지
+  // 📌 순보 벽 밖 탈출 방지
   const halfW = state.arena.width / 2;
   const halfH = state.arena.height / 2;
   p.x = Math.max(-halfW + p.radius, Math.min(halfW - p.radius, p.x));
@@ -176,10 +177,13 @@ export function takeDamage(dmg: number, onGameOver: () => void) {
   if (p.invincibleTimer > 0 || state.isGameOver) return;
 
   // 권 (拳) 피해 감소율 적용
-  const dmgReduction = sub ? sub.damageRed || 0 : 0;
+  const dmgReduction = Math.min(0.85, sub ? sub.damageRed || 0 : 0);
   const actualDmg = Math.max(1, dmg * (1 - dmgReduction));
 
   p.hp -= actualDmg;
+  // 피격 무적 시간 설정 (기본 0.6초 + 서브스탯)
+  const hitInvinc = 0.6 + (sub ? sub.invincDuration || 0 : 0);
+  p.invincibleTimer = hitInvinc;
   state.playerHitFlashTimer = 0.2;
 
   // 👊 권 (拳) 10% 울트라 레어: 피격 시 220px 체술 반격 충격파 방출 (50 DMG)

@@ -3,7 +3,7 @@
  */
 
 import { state } from '../core/GameState';
-import { AttackInstance } from '../types/game';
+import { BasicAttack } from '../types/game';
 import { Synth } from '../core/AudioManager';
 import { killEnemy } from './Enemy';
 import { createHitParticles, addFloatingText } from '../renderers/CanvasRenderer';
@@ -12,43 +12,50 @@ let attackIdCounter = 1;
 
 export function dispatchBasicAttack() {
   const p = state.player;
-  const attackConfig = state.assignedAttack || { id: 'Thrust' };
   const sub = state.subStats;
+  const attackConfig = state.assignedAttack || { id: 'Thrust' };
 
-  // 참(斬) 스탯 및 서브스탯 기반 데미지 연산 (기초 대미지 12로 서바이벌 밸런스 조정)
-  const baseDmg = 12 + (state.stats.cham * 3);
-  const bonusDmg = sub ? sub.bonusAtkDmg || 0 : 0;
+  // 참(斬) 스탯 및 서브스탯 기반 데미지 연산 (4배 대미지 묵직한 한 방 튜닝: 기본 56 + pt당 8대미지)
+  const baseDmg = 56 + (state.stats.cham * 8);
+  const bonusDmg = (sub ? sub.bonusAtkDmg || 0 : 0) * 4;
   const finalBaseDmg = baseDmg + bonusDmg;
 
-  // 치명타 여부 계산
-  const critRate = sub ? sub.critRate || 0.05 : 0.05;
+  // 치명타 여부 계산 (기본 5% + 선택지 상승 수치)
+  const critRate = 0.05 + (sub ? sub.critRate || 0 : 0);
   const isCrit = Math.random() < critRate;
   const damage = Math.floor(finalBaseDmg * (isCrit ? 1.6 : 1.0));
 
   // 검기 크기 보너스
   const sizeBonus = sub ? sub.atkSizeBonus || 1.0 : 1.0;
 
-  // 플레이어바라보는 방향 또는 가까운 적 타겟팅
-  let targetAngle = p.angle;
-  let nearestDist = Infinity;
+  // 📌 아무리 멀어도 가장 가까운 적을 향해 100% 무조건 정밀 조준 사출
   let nearestEnemy = null;
+  let nearestDist = Infinity;
+  let targetDx = Math.cos(p.angle);
+  let targetDy = Math.sin(p.angle);
 
   for (const enemy of state.enemies) {
-    const dist = Math.hypot(enemy.x - p.x, enemy.y - p.y);
+    const dx = enemy.x - p.x;
+    const dy = enemy.y - p.y;
+    const dist = Math.hypot(dx, dy);
     if (dist < nearestDist) {
       nearestDist = dist;
       nearestEnemy = enemy;
+      targetDx = dx;
+      targetDy = dy;
     }
   }
 
-  if (nearestEnemy && nearestDist < 350) {
-    targetAngle = Math.atan2(nearestEnemy.y - p.y, nearestEnemy.x - p.x);
-  }
+  // 필드에 적이 아예 0마리일 때는 미사출 처리
+  if (!nearestEnemy && state.enemies.length === 0) return;
+
+  const targetAngle = Math.atan2(targetDy, targetDx);
 
   Synth.playSlashSound(attackConfig.id);
 
-  // ⚔️ extraAtkCount (참 10% 울트라 레어) 수치에 따라 사출 횟수 증가 (기본 1발 + extraAtkCount)
-  const totalWaves = 1 + (sub ? sub.extraAtkCount || 0 : 0);
+  // ⚔️ extraAtkCount 정수 수치 기반 추가 사출 (기본 1발 + extraAtkCount 정수발)
+  const extraWaves = Math.max(0, Math.round(sub ? sub.extraAtkCount || 0 : 0));
+  const totalWaves = 1 + extraWaves;
   const angleStep = 0.22; // 2갈래 이상 확산 각도
 
   for (let w = 0; w < totalWaves; w++) {
@@ -75,7 +82,7 @@ export function dispatchBasicAttack() {
         isCrit
       });
     } else if (attackConfig.id === 'Slash') {
-      // ⚔️ 베기 (월아천충): 묵직한 중거리 광역 참격 파동
+      // ⚔️ 베기 (월아천충): 묵직한 중거리 광역 참격 파동 (사거리 1.3배 상승 튜닝: life 0.65s)
       const speed = 165;
       state.attacks.push({
         id: attackIdCounter++,
@@ -86,8 +93,8 @@ export function dispatchBasicAttack() {
         vy: Math.sin(waveAngle) * speed,
         radius: 38 * sizeBonus,
         damage: Math.floor(damage * 0.85),
-        life: 0.50,
-        maxLife: 0.50,
+        life: 0.65,
+        maxLife: 0.65,
         angle: waveAngle,
         hitEnemies: new Set(),
         isCrit
@@ -138,6 +145,7 @@ export function dispatchBasicAttack() {
 }
 
 export function updateAttacks(dt: number) {
+  const p = state.player;
   const sub = state.subStats;
 
   for (let i = state.attacks.length - 1; i >= 0; i--) {
@@ -157,7 +165,9 @@ export function updateAttacks(dt: number) {
       const enemy = state.enemies[j];
       if (atk.hitEnemies.has(enemy.id)) continue;
 
-      const dist = Math.hypot(enemy.x - atk.x, enemy.y - atk.y);
+      const kbDx = enemy.x - atk.x;
+      const kbDy = enemy.y - atk.y;
+      const dist = Math.hypot(kbDx, kbDy);
       if (dist < atk.radius + enemy.radius) {
         atk.hitEnemies.add(enemy.id);
 
@@ -165,11 +175,11 @@ export function updateAttacks(dt: number) {
         enemy.hp -= atk.damage;
         Synth.playHitSound();
 
-        // 부드러운 유기적 물리 넉백 속도 임펄스 부여 (순간 텔레포트 뚝뚝 끊김 완전 차단)
+        // 부드러운 유기적 물리 넉백 속도 임펄스 부여
         const kbMult = sub ? sub.knockbackForce || 1.0 : 1.0;
         const baseImpulse = atk.attackType === 'Slash' || atk.attackType === 'Thrust' ? 240 : 160;
         const impulseSpeed = baseImpulse * kbMult;
-        const kbAngle = Math.atan2(enemy.y - atk.y, enemy.x - atk.x);
+        const kbAngle = Math.atan2(kbDy, kbDx);
 
         enemy.kbVx = Math.cos(kbAngle) * impulseSpeed;
         enemy.kbVy = Math.sin(kbAngle) * impulseSpeed;

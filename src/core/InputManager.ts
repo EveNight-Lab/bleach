@@ -25,33 +25,65 @@ export function resetKeys() {
   }
 }
 
+export function restoreWindowFocus() {
+  if (typeof document !== 'undefined') {
+    if (document.activeElement && (document.activeElement as HTMLElement).blur) {
+      (document.activeElement as HTMLElement).blur();
+    }
+    window.focus();
+  }
+}
+
+let isInitialized = false;
+
 export function setupKeyboardListeners() {
-  window.addEventListener('keydown', (e) => {
-    keysPressed[e.key] = true;
-    keysPressed[e.code] = true;
+  if (isInitialized) return;
+  isInitialized = true;
 
-    // 한글 입력기 (IME) 키버튼 매핑 ('ㅈ', 'ㄴ', 'ㅁ', 'ㅇ')
-    if (e.key === 'ㅈ' || e.key === 'ㅈ') keysPressed['w'] = true;
-    if (e.key === 'ㄴ' || e.key === 'ㄴ') keysPressed['s'] = true;
-    if (e.key === 'ㅁ' || e.key === 'ㅁ') keysPressed['a'] = true;
-    if (e.key === 'ㅇ' || e.key === 'ㅇ') keysPressed['d'] = true;
+  const handleKeyDown = (e: KeyboardEvent) => {
+    const code = e.code;
+    const key = e.key ? e.key.toLowerCase() : '';
 
-    if ((e.code === 'Space' || e.key === ' ') && state.screen === 'battle' && !state.isPaused && !state.isGameOver) {
+    if (code === 'KeyW' || key === 'w' || key === 'ㅈ' || code === 'ArrowUp' || key === 'arrowup' || key === 'up') {
+      keysPressed['w'] = true;
+    }
+    if (code === 'KeyS' || key === 's' || key === 'ㄴ' || code === 'ArrowDown' || key === 'arrowdown' || key === 'down') {
+      keysPressed['s'] = true;
+    }
+    if (code === 'KeyA' || key === 'a' || key === 'ㅁ' || code === 'ArrowLeft' || key === 'arrowleft' || key === 'left') {
+      keysPressed['a'] = true;
+    }
+    if (code === 'KeyD' || key === 'd' || key === 'ㅇ' || code === 'ArrowRight' || key === 'arrowright' || key === 'right') {
+      keysPressed['d'] = true;
+    }
+
+    if ((code === 'Space' || key === ' ') && state.screen === 'battle' && !state.isPaused && !state.isGameOver) {
       e.preventDefault();
       triggerShunpo();
     }
-  });
+  };
 
-  window.addEventListener('keyup', (e) => {
-    keysPressed[e.key] = false;
-    keysPressed[e.code] = false;
+  const handleKeyUp = (e: KeyboardEvent) => {
+    const code = e.code;
+    const key = e.key ? e.key.toLowerCase() : '';
 
-    if (e.key === 'ㅈ' || e.key === 'ㅈ') keysPressed['w'] = false;
-    if (e.key === 'ㄴ' || e.key === 'ㄴ') keysPressed['s'] = false;
-    if (e.key === 'ㅁ' || e.key === 'ㅁ') keysPressed['a'] = false;
-    if (e.key === 'ㅇ' || e.key === 'ㅇ') keysPressed['d'] = false;
-  });
+    if (code === 'KeyW' || key === 'w' || key === 'ㅈ' || code === 'ArrowUp' || key === 'arrowup' || key === 'up') {
+      keysPressed['w'] = false;
+    }
+    if (code === 'KeyS' || key === 's' || key === 'ㄴ' || code === 'ArrowDown' || key === 'arrowdown' || key === 'down') {
+      keysPressed['s'] = false;
+    }
+    if (code === 'KeyA' || key === 'a' || key === 'ㅁ' || code === 'ArrowLeft' || key === 'arrowleft' || key === 'left') {
+      keysPressed['a'] = false;
+    }
+    if (code === 'KeyD' || key === 'd' || key === 'ㅇ' || code === 'ArrowRight' || key === 'arrowright' || key === 'right') {
+      keysPressed['d'] = false;
+    }
+  };
 
+  // 📌 capture: true 옵션으로 어떤 HTML 버블링 스왈로잉도 차단하고 전방위 이벤트 가로채기!
+  window.addEventListener('keydown', handleKeyDown, { capture: true });
+  window.addEventListener('keyup', handleKeyUp, { capture: true });
   window.addEventListener('blur', () => {
     resetKeys();
   });
