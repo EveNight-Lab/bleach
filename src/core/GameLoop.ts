@@ -108,4 +108,29 @@ function update(
 
   // 6. 영합 구체 수집
   updateExpGems(dt, () => checkExpLevelUp(onLevelUpTrigger, onShikaiTrigger));
+
+  // 7. ⚔️ 참백도 시해(始解) 영압 차징 & 드레인 엔진
+  if (state.shikai) {
+    const isContinuous = state.shikai.archetype === 'B1_Area' || state.shikai.archetype === 'B2_Compact';
+
+    if (isContinuous && state.shikaiActive) {
+      // 지속 소모형: 활성화 중 6초간 게이지 역회전 감소 (1.0 -> 0)
+      state.shikaiGauge -= dt / 6.0;
+      if (state.shikaiGauge <= 0) {
+        state.shikaiGauge = 0;
+        state.shikaiActive = false; // 드레인 완료 시 자동 OFF
+      }
+    } else if (!state.shikaiActive) {
+      // 차징 진행: 6초당 1스택씩 영압 차징!
+      if (state.shikaiStacks < state.shikaiMaxStacks) {
+        state.shikaiGauge += dt / 6.0;
+        if (state.shikaiGauge >= 1.0) {
+          state.shikaiGauge = 0;
+          state.shikaiStacks += 1;
+        }
+      } else {
+        state.shikaiGauge = 1.0;
+      }
+    }
+  }
 }

@@ -59,8 +59,21 @@ export const TouchControls: React.FC = () => {
   };
 
   const handleShunpoBtn = (e: React.TouchEvent | React.MouseEvent) => {
+    if (e.type === 'touchstart') {
+      e.preventDefault(); // 모바일 터치 시 중복 synthetic onClick 발동 방지!
+    }
     e.stopPropagation();
     triggerShunpo();
+  };
+
+  const handleShikaiBtn = (e: React.TouchEvent | React.MouseEvent) => {
+    if (e.type === 'touchstart') {
+      e.preventDefault();
+    }
+    e.stopPropagation();
+    if (state.shikai) {
+      state.attackTimer = 999;
+    }
   };
 
   return (
@@ -87,28 +100,79 @@ export const TouchControls: React.FC = () => {
         </div>
       </div>
 
-      {/* Right: Shunpo Action Button */}
-      <div className="absolute right-[max(0.75rem,var(--sar))] bottom-[max(0.75rem,var(--sab))] pointer-events-auto flex items-center gap-3">
+      {/* Right: Action Buttons (Main Shikai at bottom-right, Shunpo at bottom-left of Shikai) */}
+      <div className="absolute right-[max(0.75rem,var(--sar))] bottom-[max(0.75rem,var(--sab))] pointer-events-auto flex items-end gap-2.5 sm:gap-3">
+        {/* Shunpo Flash Step Button (Placed at bottom-left of Shikai) */}
         <button
           onTouchStart={handleShunpoBtn}
           onClick={handleShunpoBtn}
           disabled={shunpoCdProgress > 0}
-          className={`w-14 h-14 sm:w-18 sm:h-18 rounded-full glass-panel flex flex-col items-center justify-center relative shadow-lg transition-transform active:scale-95 cursor-pointer touch-none opacity-85 hover:opacity-100 ${
+          className={`w-12 h-12 sm:w-14 sm:h-14 mb-1 rounded-full glass-panel flex flex-col items-center justify-center relative shadow-lg transition-transform active:scale-95 cursor-pointer touch-none opacity-85 hover:opacity-100 ${
             shunpoCdProgress > 0 ? 'opacity-50 border-slate-700' : 'border-sky-400/80 reatsu-glow'
           }`}
           aria-label="순보 순간이동"
         >
-          {/* Cooldown Overlay Pie */}
           {shunpoCdProgress > 0 && (
-            <div
-              className="absolute inset-0 rounded-full bg-slate-950/85 flex items-center justify-center text-[10px] font-mono font-bold text-sky-300"
-            >
+            <div className="absolute inset-0 rounded-full bg-slate-950/85 flex items-center justify-center text-[9px] font-mono font-bold text-sky-300">
               {Math.ceil(state.player.shunpoCooldown * 10) / 10}s
             </div>
           )}
-
-          <span className="text-[10px] sm:text-xs font-black text-sky-200 tracking-wider">순보</span>
+          <span className="text-[10px] font-black text-sky-200 tracking-wider">순보</span>
         </button>
+
+        {/* Main Shikai Action Button (Multi-Color Stack & Reverse Drain Gauge) */}
+        {(() => {
+          const shikai = state.shikai;
+          const isContinuous = shikai ? (shikai.archetype === 'B1_Area' || shikai.archetype === 'B2_Compact') : false;
+          const STACK_COLORS = ['#f59e0b', '#f97316', '#ef4444', '#00e5ff'];
+          const baseColor = STACK_COLORS[Math.min(3, state.shikaiStacks)];
+          const fillDeg = isContinuous && state.shikaiActive
+            ? (state.shikaiGauge * 360) // 활성화 중 역회전 360도 -> 0도 드레인!
+            : (state.shikaiGauge * 360); // 차징 중 0도 -> 360도 충전!
+
+          return (
+            <button
+              onTouchStart={handleShikaiBtn}
+              onClick={handleShikaiBtn}
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex flex-col items-center justify-center relative shadow-2xl transition-all active:scale-95 cursor-pointer touch-none overflow-hidden ${
+                shikai
+                  ? state.shikaiActive
+                    ? 'bg-slate-950 border-2 border-cyan-400 text-cyan-300 ring-4 ring-cyan-500/40 animate-pulse'
+                    : 'bg-slate-950 border-2 border-amber-400 text-amber-300'
+                  : 'bg-slate-950/80 border border-slate-800 text-slate-600'
+              }`}
+              aria-label="시해 해방"
+            >
+              {/* Conic Gradient Pie Gauge Overlay */}
+              {shikai && (
+                <div
+                  className="absolute inset-0 rounded-full pointer-events-none opacity-45"
+                  style={{
+                    background: `conic-gradient(${baseColor} ${fillDeg}deg, transparent ${fillDeg}deg)`
+                  }}
+                />
+              )}
+
+              {/* Stack / Active Badge (Top Right) */}
+              {shikai && (
+                <div className={`absolute top-1 right-1 px-1.5 py-0.5 rounded-full text-[9px] font-black font-mono shadow-md ${
+                  isContinuous && state.shikaiActive
+                    ? 'bg-cyan-500 text-slate-950 animate-bounce'
+                    : 'bg-amber-500 text-slate-950'
+                }`}>
+                  {isContinuous ? (state.shikaiActive ? 'ON' : 'OFF') : `x${state.shikaiStacks}`}
+                </div>
+              )}
+
+              <Zap className={`w-5 h-5 sm:w-6 sm:h-6 fill-current mb-0.5 z-10 ${
+                isContinuous && state.shikaiActive ? 'text-cyan-300 animate-spin-slow' : 'text-amber-300'
+              }`} />
+              <span className="text-[10px] sm:text-xs font-black tracking-wider z-10">
+                {shikai ? (isContinuous ? (state.shikaiActive ? '유지중' : '시해') : '시해') : '잠금'}
+              </span>
+            </button>
+          );
+        })()}
       </div>
     </div>
   );

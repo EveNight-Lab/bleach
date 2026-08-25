@@ -33,7 +33,7 @@ const BLOCK1_NORMS: ShikaiBlock1[] = [
     shapeName: '마름모 조각',
     count: 5,
     spawnOrigin: 'Caster_To_Enemy',
-    text: '<< 자신으로부터 / 마름모 조각 / 5개를 / 가장 가까운 적을 향해 / 발사하고 소멸한다. >>',
+    text: '자신으로부터 / 마름모 조각 / 5개를 / 가장 가까운 적을 향해 / 발사하고 소멸한다.',
     isMacro: false
   },
   {
@@ -41,7 +41,7 @@ const BLOCK1_NORMS: ShikaiBlock1[] = [
     shapeName: '반달 검파',
     count: 2,
     spawnOrigin: 'Caster_To_Random',
-    text: '<< 자신 중심으로 / 반달 검파 / 2개를 / 360도 전방위로 / 나선 사출한다. >>',
+    text: '자신 중심으로 / 반달 검파 / 2개를 / 360도 전방위로 / 나선 사출한다.',
     isMacro: false
   },
   {
@@ -49,7 +49,7 @@ const BLOCK1_NORMS: ShikaiBlock1[] = [
     shapeName: '원형 결계',
     count: 1,
     spawnOrigin: 'Caster_Adjacent_Random',
-    text: '<< 자신 발밑에 / 원형 결계 / 1개를 / 제자리에 / 4초간 펼친다. >>',
+    text: '자신 발밑에 / 원형 결계 / 1개를 / 제자리에 / 4초간 펼친다.',
     isMacro: false
   }
 ];
@@ -60,7 +60,7 @@ const BLOCK1_RARES: ShikaiBlock1[] = [
     shapeName: '칠흑 빙룡',
     count: 1,
     spawnOrigin: 'Caster_To_Enemy',
-    text: '<< ✨ [전설 매크로] 자신 위치에서 / 칠흑 빙룡 / 1마리를 / 유영시키며 관통한다. >>',
+    text: '✨ [전설 매크로] 자신 위치에서 / 칠흑 빙룡 / 1마리를 / 유영시키며 관통한다.',
     isMacro: true,
     macroType: 'Dragon'
   },
@@ -69,7 +69,7 @@ const BLOCK1_RARES: ShikaiBlock1[] = [
     shapeName: '참격 회오리',
     count: 4,
     spawnOrigin: 'Caster_To_Random',
-    text: '<< ✨ [전설 매크로] 자신 주변으로 / 참격 회오리 / 4개를 / 넓혀가며 공전시킨다. >>',
+    text: '✨ [전설 매크로] 자신 주변으로 / 참격 회오리 / 4개를 / 넓혀가며 공전시킨다.',
     isMacro: true,
     macroType: 'Spiral'
   },
@@ -78,7 +78,7 @@ const BLOCK1_RARES: ShikaiBlock1[] = [
     shapeName: '영력 포식 영역',
     count: 1,
     spawnOrigin: 'Caster_Adjacent_Random',
-    text: '<< ✨ [전설 매크로] 전장 전체에 / 영력 포식 영역 / 1개를 / 무한히 팽창시킨다. >>',
+    text: '✨ [전설 매크로] 전장 전체에 / 영력 포식 영역 / 1개를 / 무한히 팽창시킨다.',
     isMacro: true,
     macroType: 'Domain'
   }
@@ -88,104 +88,94 @@ const BLOCK2_REGISTRY: ShikaiBlock2[] = [
   {
     opKey: 1,
     opName: '빙륜환 동결',
-    text: '<< 피격당한 적은 / 1.5초간 / 50% 얼어붙어 속박된다. >>',
+    text: '피격당한 적은 / 1.5초간 / 50% 얼어붙어 속박된다.',
     operator: 'Zero',
     targetDomain: 'Move_Speed'
   },
   {
     opKey: 2,
     opName: '타임 스톱',
-    text: '<< 피격당한 적은 / 2.0초간 / 시공간이 완전 정지한다. >>',
+    text: '피격당한 적은 / 2.0초간 / 시공간이 완전 정지한다.',
     operator: 'Zero',
     targetDomain: 'Local_Time_Scale'
   },
   {
     opKey: 3,
     opName: '강철 경갑',
-    text: '<< 피격당한 적은 / 2.0초간 / 몸통 접촉 피해량이 0이 된다. >>',
+    text: '피격당한 적은 / 2.0초간 / 몸통 접촉 피해량이 0이 된다.',
     operator: 'Zero',
     targetDomain: 'Collision_Damage'
   },
   {
     opKey: 4,
     opName: '역무 환술',
-    text: '<< 피격당한 적은 / 2.0초간 / 이동 방향이 반대로 뒤집혀 도망친다. >>',
+    text: '피격당한 적은 / 2.0초간 / 이동 방향이 반대로 뒤집혀 도망친다.',
     operator: 'Invert',
     targetDomain: 'Move_Direction'
   },
   {
     opKey: 5,
     opName: '혼란 결계',
-    text: '<< 피격당한 적은 / 1.5초간 / 아군이 되어 서로 싸운다. >>',
+    text: '피격당한 적은 / 1.5초간 / 아군이 되어 서로 싸운다.',
     operator: 'Invert',
     targetDomain: 'Faction_Team_ID'
   },
   {
     opKey: 6,
     opName: '바라간 체인전이',
-    text: '<< 피격당한 몹의 대미지는 / 주변 20마리 적에게 / 그대로 연쇄 전이된다. >>',
+    text: '피격당한 몹의 대미지는 / 주변 20마리 적에게 / 그대로 연쇄 전이된다.',
     operator: 'Link',
     targetDomain: 'Current_HP'
   },
   {
     opKey: 7,
     opName: '빙설 연쇄 속박',
-    text: '<< 피격당한 적의 속박은 / 주변 몬스터 무리에 / 동시 연쇄 전이된다. >>',
+    text: '피격당한 적의 속박은 / 주변 몬스터 무리에 / 동시 연쇄 전이된다.',
     operator: 'Link',
     targetDomain: 'Move_Speed'
   },
   {
     opKey: 8,
     opName: '흡혈 검강',
-    text: '<< 입힌 피해량의 100%는 / 플레이어 체력으로 / 즉시 치환 흡수된다. >>',
+    text: '입힌 피해량의 100%는 / 플레이어 체력으로 / 즉시 치환 흡수된다.',
     operator: 'Substitute',
     targetDomain: 'Current_HP'
   },
   {
     opKey: 9,
     opName: '피해 반사',
-    text: '<< 플레이어가 받은 피해의 50%는 / 적 체력으로 / 되돌려준다. >>',
+    text: '플레이어가 받은 피해의 50%는 / 적 체력으로 / 되돌려준다.',
     operator: 'Substitute',
     targetDomain: 'Collision_Damage'
   },
   {
     opKey: 10,
     opName: '차조 중량 폭증',
-    text: '<< 피격당할 때마다 적의 무게는 / 2배씩 폭증하여 / 짓눌린다. >>',
+    text: '피격당할 때마다 적의 무게는 / 2배씩 폭증하여 / 짓눌린다.',
     operator: 'Amplify',
     targetDomain: 'Collision_Damage'
   },
   {
     opKey: 11,
     opName: '천본앵 팽창',
-    text: '<< 적중할 때마다 소환체 크기가 / 2배씩 거대하게 / 팽창한다. >>',
+    text: '적중할 때마다 소환체 크기가 / 2배씩 거대하게 / 팽창한다.',
     operator: 'Amplify',
     targetDomain: 'Scale'
   },
   {
     opKey: 12,
     opName: '월아천충 깡뎀',
-    text: '<< 기본 참격에 추가로 / 1.5배 강력한 / 월아천충 깡뎀이 사출된다. >>',
+    text: '기본 참격에 추가로 / 1.5배 강력한 / 월아천충 깡뎀이 사출된다.',
     operator: 'Add_Subtract',
     targetDomain: 'Current_HP'
   },
   {
     opKey: 13,
     opName: '방어 쇄약',
-    text: '<< 피격당한 적의 방어력은 / 0으로 영구 파괴되어 / 쇄약해진다. >>',
+    text: '피격당한 적의 방어력은 / 0으로 영구 파괴되어 / 쇄약해진다.',
     operator: 'Add_Subtract',
     targetDomain: 'Armor_Defense'
   }
-];
-
-const RELEASE_COMMANDS = [
-  '서상하늘에 앉아라',
-  '만물회진으로 귀인하여라',
-  '하늘을 가르고 꿰뚫어라',
-  '흩날려라',
-  '처쏘아버려라',
-  '물들이라',
-  '포효하라'
 ];
 
 const ZANPAKUTO_NAMES = [
@@ -212,13 +202,12 @@ export function generateShikaiPipeline(): ShikaiPipeline {
   // 13대 인과율 레지스트리 중 1개 롤링!
   const block2 = BLOCK2_REGISTRY[Math.floor(Math.random() * BLOCK2_REGISTRY.length)];
 
-  const releaseCmd = RELEASE_COMMANDS[Math.floor(Math.random() * RELEASE_COMMANDS.length)];
   const zanName = ZANPAKUTO_NAMES[Math.floor(Math.random() * ZANPAKUTO_NAMES.length)];
 
   return {
     id: `shikai_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     name: zanName,
-    releaseCommand: `${releaseCmd}, [${zanName}]`,
+    releaseCommand: zanName,
     archetype: archetypeKey,
     archetypeName: archDef.name,
     block1,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Play, Volume2, VolumeX, Shield, Zap, Sparkles, Smartphone, Keyboard } from 'lucide-react';
 import { rollRandomCharacter } from '../managers/CharacterRoll';
 import { Synth } from '../core/AudioManager';
+import { state } from '../core/GameState';
 
 interface TitleScreenProps {
   onStartRoll: () => void;
@@ -45,7 +46,11 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ onStartRoll }) => {
         {/* Start Game Button */}
         <button
           onClick={handleRoll}
-          className="w-full py-3 sm:py-3.5 px-5 rounded-xl bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm sm:text-base shadow-lg shadow-blue-500/25 flex items-center justify-center transition-all transform active:scale-95 hover:scale-[1.01] cursor-pointer mobile-ls-btn mb-3"
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleRoll();
+          }}
+          className="w-full py-3 sm:py-3.5 px-5 rounded-xl bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm sm:text-base shadow-lg shadow-blue-500/25 flex items-center justify-center transition-all transform active:scale-95 hover:scale-[1.01] cursor-pointer mobile-ls-btn mb-3 touch-manipulation"
         >
           <span>사신 무작위 추첨 및 시작</span>
         </button>

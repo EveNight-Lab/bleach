@@ -99,7 +99,7 @@ export const ShikaiModal: React.FC<ShikaiModalProps> = ({ isOpen, onClose }) => 
           </div>
         </div>
 
-        {/* 2. 중괄호 1 릴 (Block 1 Slot Reel: 물리 형태 & 소환) */}
+        {/* 2. 물리 형태 릴 (Block 1 Slot Reel: 물리 형태 & 소환) */}
         <div className="w-full mb-3">
           <div className="text-[10px] sm:text-xs text-slate-400 mb-1 font-mono">
             [2단계] 물리적 형태 & 소환 메커니즘
@@ -117,7 +117,7 @@ export const ShikaiModal: React.FC<ShikaiModalProps> = ({ isOpen, onClose }) => 
           </div>
         </div>
 
-        {/* 3. 중괄호 2 릴 (Block 2 Slot Reel: 인과율 13대 레지스트리 효과) */}
+        {/* 3. 인과율 효과 릴 (Block 2 Slot Reel: 인과율 13대 레지스트리 효과) */}
         <div className="w-full mb-4">
           <div className="text-[10px] sm:text-xs text-slate-400 mb-1 font-mono">
             [3단계] 적중 충돌 인과율 13대 참백도 고유 효과
@@ -132,13 +132,6 @@ export const ShikaiModal: React.FC<ShikaiModalProps> = ({ isOpen, onClose }) => 
             </div>
           </div>
         </div>
-
-        {/* 최종 해방 언도 (Release Command) */}
-        {reelStep >= 3 && (
-          <div className="w-full mb-4 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs sm:text-sm font-black italic tracking-wide animate-pulse">
-            "{pipeline.releaseCommand}"
-          </div>
-        )}
 
         {/* 하단 버튼 구역 (재생성 최대 3회 & 해방 확정) */}
         <div className="w-full flex items-center justify-between gap-3 pt-1 border-t border-slate-800">

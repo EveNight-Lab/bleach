@@ -2,6 +2,7 @@ import React from 'react';
 import { Heart, Zap, Shield, Swords, Pause, Volume2, VolumeX, Flame } from 'lucide-react';
 import { GameState } from '../types/game';
 import { Synth } from '../core/AudioManager';
+import { keysPressed } from '../core/InputManager';
 
 interface HUDProps {
   gameState: GameState;
@@ -58,6 +59,18 @@ export const HUD: React.FC<HUDProps> = ({ gameState, onPauseToggle }) => {
         >
           <Pause className="w-4 h-4 text-slate-200" />
         </button>
+      </div>
+
+      {/* 🛠️ 실시간 디버그 현황 핫 로그 오버레이 */}
+      <div className="w-full flex items-center justify-between pointer-events-none">
+        <div className="glass-panel rounded-lg px-2.5 py-1 text-[10px] font-mono text-amber-300 flex items-center gap-2 border border-amber-500/40 shadow-lg pointer-events-auto">
+          <span className="font-bold text-amber-400">🛠️ 디버그 로그:</span>
+          <span>일시정지: <strong className={gameState.isPaused ? 'text-rose-400 font-black' : 'text-emerald-400'}>{gameState.isPaused ? '🔴 TRUE (일시정지됨)' : '🟢 FALSE (정상 가동 중)'}</strong></span>
+          <div className="h-2.5 w-px bg-slate-700" />
+          <span>키 입력: W:{keysPressed['w'] ? '🟩ON' : 'off'} A:{keysPressed['a'] ? '🟩ON' : 'off'} S:{keysPressed['s'] ? '🟩ON' : 'off'} D:{keysPressed['d'] ? '🟩ON' : 'off'}</span>
+          <div className="h-2.5 w-px bg-slate-700" />
+          <span>플레이어 좌표: ({Math.round(player.x)}, {Math.round(player.y)})</span>
+        </div>
       </div>
 
       {/* HP & EXP Bars with High-Contrast Glowing Borders */}

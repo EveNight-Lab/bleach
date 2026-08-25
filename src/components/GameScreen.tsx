@@ -5,7 +5,7 @@ import { LevelUpModal } from './LevelUpModal';
 import { ShikaiModal } from './ShikaiModal';
 import { GameOverModal } from './GameOverModal';
 import { startBattleLoop, stopBattleLoop } from '../core/GameLoop';
-import { setupKeyboardListeners } from '../core/InputManager';
+import { setupKeyboardListeners, resetKeys, restoreWindowFocus } from '../core/InputManager';
 import { state } from '../core/GameState';
 
 interface GameScreenProps {
@@ -22,6 +22,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onReturnToTitle, onReRol
 
   useEffect(() => {
     setupKeyboardListeners();
+    resetKeys();
+    restoreWindowFocus();
   }, []);
 
   useEffect(() => {

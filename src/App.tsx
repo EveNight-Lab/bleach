@@ -5,6 +5,7 @@ import { GameScreen } from './components/GameScreen';
 import { RotateLandscapeOverlay } from './components/RotateLandscapeOverlay';
 import { state } from './core/GameState';
 import { ScreenState } from './types/game';
+import { rollRandomCharacter } from './managers/CharacterRoll';
 
 export const App: React.FC = () => {
   const [screen, setScreen] = useState<ScreenState>('title');

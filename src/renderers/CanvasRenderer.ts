@@ -110,25 +110,28 @@ export function renderCanvas(ctx: CanvasRenderingContext2D, width: number, heigh
   }
 }
 
-// 📌 2.5D 바닥 입체 그림자 패스 (Footstep Elliptical Shadows)
+// 📌 2.5D 바닥 입체 그림자 패스 (Footstep Elliptical Shadows - 2.5D 원근 투시 밀착)
 function drawFloorShadows(ctx: CanvasRenderingContext2D) {
   // 1. 경험치 구체 그림자
   for (const gem of state.expGems) {
-    drawSingleShadow(ctx, gem.x, gem.y, gem.radius * 0.7);
+    const proj = project2DPoint(gem.x, gem.y);
+    drawSingleShadow(ctx, proj.x, proj.y, gem.radius * 0.7);
   }
   // 2. 호로 몬스터 그림자
   for (const enemy of state.enemies) {
-    drawSingleShadow(ctx, enemy.x, enemy.y, enemy.radius);
+    const proj = project2DPoint(enemy.x, enemy.y);
+    drawSingleShadow(ctx, proj.x, proj.y, enemy.radius);
   }
   // 3. 플레이어 그림자
   const p = state.player;
-  drawSingleShadow(ctx, p.x, p.y, p.radius * 1.15, 'rgba(56, 189, 248, 0.45)');
+  const pProj = project2DPoint(p.x, p.y);
+  drawSingleShadow(ctx, pProj.x, pProj.y, p.radius * 1.15, 'rgba(56, 189, 248, 0.45)');
 }
 
-function drawSingleShadow(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, glowColor?: string) {
+function drawSingleShadow(ctx: CanvasRenderingContext2D, px: number, py: number, radius: number, glowColor?: string) {
   ctx.save();
   ctx.beginPath();
-  ctx.ellipse(x, y + radius * 0.6, radius * 1.2, radius * 0.45, 0, 0, Math.PI * 2);
+  ctx.ellipse(px, py + radius * 0.55, radius * 1.25, radius * 0.42, 0, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(2, 6, 23, 0.65)';
   ctx.fill();
   if (glowColor) {
@@ -311,7 +314,7 @@ function drawArenaGrid(ctx: CanvasRenderingContext2D) {
   ctx.restore();
 }
 
-// 📌 3대 전술 호로 예고 구역 (World-Anchored Progressive Charge Fill Telegraph)
+// 📌 3대 전술 호로 예고 구역 (2.5D 사다리꼴 원근 바닥밀착 3D Danger Zone Mask)
 function drawEnemyTelegraphs(ctx: CanvasRenderingContext2D) {
   for (const enemy of state.enemies) {
     if (enemy.type !== 'MidDash') continue;
@@ -320,101 +323,133 @@ function drawEnemyTelegraphs(ctx: CanvasRenderingContext2D) {
     const isAction = enemy.state === 'action';
     if (!isCharging && !isAction) continue;
 
-    // 70% 고정 좌표 또는 현재 위치
     const anchorX = enemy.lockedWorldX !== undefined ? enemy.lockedWorldX : enemy.x;
     const anchorY = enemy.lockedWorldY !== undefined ? enemy.lockedWorldY : enemy.y;
     const anchorAngle = enemy.lockedAngle !== undefined ? enemy.lockedAngle : 0;
     const progress = isAction ? 1.0 : Math.min(1.0, Math.max(0, enemy.telegraphProgress || 0));
 
-    ctx.save();
-    ctx.translate(anchorX, anchorY);
-    ctx.rotate(anchorAngle);
+    const length = 600;
+    const halfW = 34;
 
-    if (enemy.pattern === 'Line' || !enemy.pattern) {
-      // 📌 Line: 600px x 68px 차오르는 게이지 회랑
-      // 1. 은은한 전체 구역 가이드 박스
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.fillRect(0, -34, 600, 68);
-      ctx.strokeRect(0, -34, 600, 68);
+    const cosA = Math.cos(anchorAngle);
+    const sinA = Math.sin(anchorAngle);
 
-      // 2. 0% -> 100% 차오르는 빨간색 실시간 충전 게이지
-      const fillW = 600 * progress;
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.65)';
-      ctx.fillRect(0, -34, fillW, 68);
+    // 바닥 2D 코너 4개 좌표 연산
+    const calcCorner = (localX: number, localY: number) => {
+      const wx = anchorX + cosA * localX - sinA * localY;
+      const wy = anchorY + sinA * localX + cosA * localY;
+      return project2DPoint(wx, wy);
+    };
 
-      // 3. 선단부 선명한 충전 프론트라인 경계선 (완충 임박 가시성 100%)
-      if (isCharging && fillW > 2) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(fillW - 3, -34, 4, 68);
+    // 1. 전체 영역 4개 원근 모서리
+    const p0 = calcCorner(0, -halfW);
+    const p1 = calcCorner(0, halfW);
+    const p2 = calcCorner(length, halfW);
+    const p3 = calcCorner(length, -halfW);
+
+    // 은은한 2.5D 바닥 밀착 전체 예고 회랑
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. 0% -> 100% 차오르는 실시간 붉은 충전 회랑
+    const fillLen = length * progress;
+    if (fillLen > 2) {
+      const fp2 = calcCorner(fillLen, halfW);
+      const fp3 = calcCorner(fillLen, -halfW);
+
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.70)';
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(fp2.x, fp2.y);
+      ctx.lineTo(fp3.x, fp3.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. 선단부 흰색 글로우 프론트라인
+      if (isCharging) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(fp3.x, fp3.y);
+        ctx.lineTo(fp2.x, fp2.y);
+        ctx.stroke();
       }
     }
-
-    ctx.restore();
   }
 
-  // 📌 세로 사출 호로 조준선 (Progressive Cero Laser Sight Line & Charging Orb - 2.0s Charge & 70% Lock)
+  // 📌 세로 사출 호로 조준선 (2.5D 사다리꼴 원근 바닥 밀착 에메랄드 레이저선)
   for (const enemy of state.enemies) {
     if (enemy.type === 'Projectile' && enemy.ceroCooldown !== undefined && enemy.ceroCooldown <= 2.0) {
       const p = state.player;
       const angle = enemy.lockedAngle !== undefined ? enemy.lockedAngle : Math.atan2(p.y - enemy.y, p.x - enemy.x);
       const chargeRatio = Math.max(0, Math.min(1.0, 1 - (enemy.ceroCooldown / 2.0)));
 
-      ctx.save();
-      ctx.translate(enemy.x, enemy.y);
-      ctx.rotate(angle);
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
 
-      // 1. 명확한 550px 최종 도달 위치 전 장거리 레이저 회랑 가이드 점선 (가시성 100%)
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)';
+      const pStart = project2DPoint(enemy.x, enemy.y);
+      const pEnd = project2DPoint(enemy.x + cosA * 550, enemy.y + sinA * 550);
+      const pFill = project2DPoint(enemy.x + cosA * (550 * chargeRatio), enemy.y + sinA * (550 * chargeRatio));
+
+      // 1. 장거리 레이저 바닥 점선 가이드
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.40)';
       ctx.lineWidth = 3.5;
       ctx.setLineDash([8, 4]);
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(550, 0);
+      ctx.moveTo(pStart.x, pStart.y);
+      ctx.lineTo(pEnd.x, pEnd.y);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // 2. 0% -> 100% 최종 도달 지점(550px)까지 차오르는 진한 에메랄드 충전 레이저선
-      const fillLen = 550 * chargeRatio;
-      if (fillLen > 2) {
+      // 2. 0% -> 100% 차오르는 진한 에메랄드 레이저선
+      if (chargeRatio > 0.05) {
         ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 4.5;
+        ctx.lineWidth = 5;
         ctx.shadowColor = '#10b981';
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(fillLen, 0);
-        ctx.stroke();
-
-        // 3. 100% 완충 지점 발사 프론트라인 흰색 글로우 팁 (Tip)
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#ffffff';
         ctx.shadowBlur = 14;
         ctx.beginPath();
-        ctx.arc(fillLen, 0, 4, 0, Math.PI * 2);
+        ctx.moveTo(pStart.x, pStart.y);
+        ctx.lineTo(pFill.x, pFill.y);
+        ctx.stroke();
+
+        // 3. 발사 프론트라인 글로우 팁
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.arc(pFill.x, pFill.y, 4.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
-      // 4. 세로 사출 구체 에너지 응축 렌더링
+      // 4. 구체 응축 이펙트
       ctx.fillStyle = '#10b981';
       ctx.shadowColor = '#10b981';
       ctx.shadowBlur = 14 * chargeRatio;
       ctx.beginPath();
-      ctx.arc(enemy.radius + 4, 0, 3 + chargeRatio * 8, 0, Math.PI * 2);
+      ctx.arc(pStart.x, pStart.y, 4 + chargeRatio * 8, 0, Math.PI * 2);
       ctx.fill();
-
-      ctx.restore();
+      ctx.shadowBlur = 0;
     }
   }
 }
 
 function drawPlayer(ctx: CanvasRenderingContext2D) {
   const p = state.player;
+  const proj = project2DPoint(p.x, p.y);
 
   ctx.save();
-  ctx.translate(p.x, p.y);
+  ctx.translate(proj.x, proj.y);
 
   if (p.invincibleTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0) {
     ctx.globalAlpha = 0.4;
@@ -481,8 +516,10 @@ function drawPlayer(ctx: CanvasRenderingContext2D) {
 }
 
 function drawSingleEnemy(ctx: CanvasRenderingContext2D, enemy: any) {
+  const proj = project2DPoint(enemy.x, enemy.y);
+
   ctx.save();
-  ctx.translate(enemy.x, enemy.y);
+  ctx.translate(proj.x, proj.y);
 
   if (enemy.spawnGrace > 0) {
     ctx.globalAlpha = 0.4;
@@ -505,8 +542,12 @@ function drawSingleEnemy(ctx: CanvasRenderingContext2D, enemy: any) {
     // 📌 근거리형: ■ 네모 (Square)
     ctx.fillRect(-r, -r, r * 2, r * 2);
   } else if (enemy.type === 'MidDash') {
-    // 📌 중거리형: ▲ 세모 (Triangle)
-    const rot = enemy.lockedAngle !== undefined ? enemy.lockedAngle : (Math.atan2(state.player.y - enemy.y, state.player.x - enemy.x));
+    // 📌 중거리형: ▲ 세모 (Triangle) - 돌진(charging, action) 시에만 lockedAngle 조준 방향 유지, 그 외엔 실시간 플레이어 주시!
+    const isDashing = enemy.state === 'charging' || enemy.state === 'action';
+    const rot = (isDashing && enemy.lockedAngle !== undefined)
+      ? enemy.lockedAngle
+      : Math.atan2(state.player.y - enemy.y, state.player.x - enemy.x);
+
     ctx.rotate(rot);
     ctx.moveTo(r * 1.3, 0);
     ctx.lineTo(-r * 0.9, -r * 0.9);
@@ -548,8 +589,10 @@ function drawSingleEnemy(ctx: CanvasRenderingContext2D, enemy: any) {
 }
 
 function drawSingleExpGem(ctx: CanvasRenderingContext2D, gem: any) {
+  const proj = project2DPoint(gem.x, gem.y);
+
   ctx.save();
-  ctx.translate(gem.x, gem.y);
+  ctx.translate(proj.x, proj.y);
   ctx.fillStyle = '#10b981';
   ctx.shadowColor = '#10b981';
   ctx.shadowBlur = 8;
@@ -566,8 +609,10 @@ function drawSingleExpGem(ctx: CanvasRenderingContext2D, gem: any) {
 
 function drawAttacks(ctx: CanvasRenderingContext2D) {
   for (const atk of state.attacks) {
+    const proj = project2DPoint(atk.x, atk.y);
+
     ctx.save();
-    ctx.translate(atk.x, atk.y);
+    ctx.translate(proj.x, proj.y);
     ctx.rotate(atk.angle);
 
     if (atk.attackType === 'Slash') {
@@ -617,6 +662,8 @@ function drawAttacks(ctx: CanvasRenderingContext2D) {
 
 function drawEnemyProjectiles(ctx: CanvasRenderingContext2D) {
   for (const proj of state.enemyProjectiles) {
+    const pProj = project2DPoint(proj.x, proj.y);
+
     ctx.save();
 
     // 1. 잔상 잔류 궤적 (Motion Trail)
@@ -625,8 +672,9 @@ function drawEnemyProjectiles(ctx: CanvasRenderingContext2D) {
     const dirY = proj.vy / norm;
 
     for (let k = 1; k <= 3; k++) {
+      const trailP = project2DPoint(proj.x - dirX * k * 8, proj.y - dirY * k * 8);
       ctx.save();
-      ctx.translate(proj.x - dirX * k * 8, proj.y - dirY * k * 8);
+      ctx.translate(trailP.x, trailP.y);
       ctx.globalAlpha = 0.5 - k * 0.12;
       ctx.fillStyle = '#10b981';
       ctx.beginPath();
@@ -636,7 +684,7 @@ function drawEnemyProjectiles(ctx: CanvasRenderingContext2D) {
     }
 
     // 2. 메인 세로 투사체 구체 (강렬한 청록/에메랄드 글로우 & 하얀 고열 핵)
-    ctx.translate(proj.x, proj.y);
+    ctx.translate(pProj.x, pProj.y);
     ctx.shadowColor = '#00e5ff';
     ctx.shadowBlur = 18;
 
@@ -659,8 +707,10 @@ function drawEnemyProjectiles(ctx: CanvasRenderingContext2D) {
 
 function drawExpGems(ctx: CanvasRenderingContext2D) {
   for (const gem of state.expGems) {
+    const proj = project2DPoint(gem.x, gem.y);
+
     ctx.save();
-    ctx.translate(gem.x, gem.y);
+    ctx.translate(proj.x, proj.y);
     ctx.fillStyle = '#10b981';
     ctx.shadowColor = '#10b981';
     ctx.shadowBlur = 8;
@@ -686,9 +736,11 @@ function drawAfterimages(ctx: CanvasRenderingContext2D) {
       continue;
     }
 
+    const proj = project2DPoint(img.x, img.y);
     const alpha = img.life / img.maxLife;
+
     ctx.save();
-    ctx.translate(img.x, img.y);
+    ctx.translate(proj.x, proj.y);
     ctx.globalAlpha = alpha * 0.45;
     ctx.fillStyle = '#38bdf8';
     ctx.beginPath();
@@ -711,11 +763,13 @@ function drawParticles(ctx: CanvasRenderingContext2D) {
     pt.x += pt.vx * dt;
     pt.y += pt.vy * dt;
 
+    const proj = project2DPoint(pt.x, pt.y);
+
     ctx.save();
     ctx.globalAlpha = pt.life / pt.maxLife;
     ctx.fillStyle = pt.color;
     ctx.beginPath();
-    ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+    ctx.arc(proj.x, proj.y, pt.size, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -733,6 +787,8 @@ function drawFloatingTexts(ctx: CanvasRenderingContext2D) {
 
     txt.y += txt.vy * dt;
 
+    const proj = project2DPoint(txt.x, txt.y);
+
     ctx.save();
     ctx.globalAlpha = txt.life / txt.maxLife;
     ctx.font = 'bold 15px Pretendard, sans-serif';
@@ -740,7 +796,7 @@ function drawFloatingTexts(ctx: CanvasRenderingContext2D) {
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 4;
     ctx.textAlign = 'center';
-    ctx.fillText(txt.text, txt.x, txt.y);
+    ctx.fillText(txt.text, proj.x, proj.y);
     ctx.restore();
   }
 }

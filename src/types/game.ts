@@ -245,4 +245,9 @@ export interface GameState {
   attackCooldown: number;
   shikai: ShikaiPipeline | null;
   shikaiUnlocked: boolean;
+  shikaiActive: boolean;
+  shikaiGauge: number;
+  shikaiStacks: number;
+  shikaiMaxStacks: number;
+  isShikaiTestMode?: boolean;
 }

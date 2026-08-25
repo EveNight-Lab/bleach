@@ -215,31 +215,57 @@ export function updateEnemies(
 
       // 세로 조준 및 70% 고정 락 발사!
       if (enemy.ceroCooldown !== undefined) {
-        enemy.ceroCooldown -= mobDt;
-
-        if (enemy.ceroCooldown <= 2.0) {
-          const chargeRatio = 1 - (enemy.ceroCooldown / 2.0);
-          if (chargeRatio < 0.70 || enemy.lockedAngle === undefined) {
-            const aimDx = dx;
-            const aimDy = dy;
-            const desiredAngle = Math.atan2(aimDy, aimDx);
-            if (enemy.lockedAngle === undefined) {
-              enemy.lockedAngle = desiredAngle;
-            } else {
-              enemy.lockedAngle = lerpAngle(enemy.lockedAngle, desiredAngle, 4.5 * mobDt);
+        // 📌 원거리 뭉침 체크: 다른 Projectile 호로와 90px 이내로 뭉쳐있다면 차징 보류 및 공간 확보 우선!
+        let isStacked = false;
+        for (const other of state.enemies) {
+          if (other.id !== enemy.id && other.type === 'Projectile') {
+            const odist = Math.hypot(enemy.x - other.x, enemy.y - other.y);
+            if (odist < 95) {
+              isStacked = true;
+              // 뭉쳐있는 경우 서로 멀어지도록 부드러운 위치 분산 벡터 적용
+              if (odist > 0) {
+                const repMult = (95 - odist) * 1.2;
+                enemy.x += ((enemy.x - other.x) / odist) * repMult * mobDt;
+                enemy.y += ((enemy.y - other.y) / odist) * repMult * mobDt;
+              }
+              break;
             }
           }
-        } else {
-          enemy.lockedAngle = undefined;
         }
 
-        if (enemy.ceroCooldown <= 0) {
-          enemy.ceroCooldown = 3.5;
-          const fireAngle = enemy.lockedAngle !== undefined ? enemy.lockedAngle : Math.atan2(dy, dx);
-          const fireVx = Math.cos(fireAngle);
-          const fireVy = Math.sin(fireAngle);
-          spawnCeroProjectile(enemy.x, enemy.y, fireVx, fireVy, enemy.damage);
+        // 뭉쳐있다면 세로 차징 쿨다운 리셋 (공격 보류 및 재배치)
+        if (isStacked) {
+          if (enemy.ceroCooldown < 2.0) {
+            enemy.ceroCooldown = 2.0; // 뭉친 동안 차징 중단
+          }
           enemy.lockedAngle = undefined;
+        } else {
+          enemy.ceroCooldown -= mobDt;
+
+          if (enemy.ceroCooldown <= 2.0) {
+            const chargeRatio = 1 - (enemy.ceroCooldown / 2.0);
+            if (chargeRatio < 0.70 || enemy.lockedAngle === undefined) {
+              const aimDx = dx;
+              const aimDy = dy;
+              const desiredAngle = Math.atan2(aimDy, aimDx);
+              if (enemy.lockedAngle === undefined) {
+                enemy.lockedAngle = desiredAngle;
+              } else {
+                enemy.lockedAngle = lerpAngle(enemy.lockedAngle, desiredAngle, 4.5 * mobDt);
+              }
+            }
+          } else {
+            enemy.lockedAngle = undefined;
+          }
+
+          if (enemy.ceroCooldown <= 0) {
+            enemy.ceroCooldown = 3.5;
+            const fireAngle = enemy.lockedAngle !== undefined ? enemy.lockedAngle : Math.atan2(dy, dx);
+            const fireVx = Math.cos(fireAngle);
+            const fireVy = Math.sin(fireAngle);
+            spawnCeroProjectile(enemy.x, enemy.y, fireVx, fireVy, enemy.damage);
+            enemy.lockedAngle = undefined;
+          }
         }
       }
     } else {
@@ -251,20 +277,24 @@ export function updateEnemies(
       }
     }
 
-    // 📌 동일 타입 전술 호로 간격 넓히기 (110px) 및 몬스터-몬스터 밀쳐내기
+    // 📌 몬스터-몬스터 유기적 겹침 방지 (밀쳐내기 물리)
+    // ⚠️ MidDash 돌진 중(charging, action)인 호로는 밀쳐내기 물리 대상에서 제외하여 돌진 중 밀어냄 방지!
     for (let j = i - 1; j >= 0; j--) {
       const other = state.enemies[j];
+
+      // 돌진 중이거나 쿨다운 중인 MidDash 호로는 폭력적인 밀쳐내기 비활성화
+      const isEnemyDashing = enemy.type === 'MidDash' && (enemy.state === 'charging' || enemy.state === 'action' || enemy.state === 'cooldown');
+      const isOtherDashing = other.type === 'MidDash' && (other.state === 'charging' || other.state === 'action' || other.state === 'cooldown');
+
+      if (isEnemyDashing || isOtherDashing) continue;
+
       const mdx = enemy.x - other.x;
       const mdy = enemy.y - other.y;
       const mdist = Math.hypot(mdx, mdy);
-
-      let minDist = enemy.radius + other.radius;
-      if (enemy.type === other.type && (enemy.type === 'MidDash' || enemy.type === 'Projectile')) {
-        minDist = 110;
-      }
+      const minDist = enemy.radius + other.radius;
 
       if (mdist < minDist && mdist > 0) {
-        const overlap = (minDist - mdist) * 0.45;
+        const overlap = (minDist - mdist) * 0.35;
         const pushX = (mdx / mdist) * overlap;
         const pushY = (mdy / mdist) * overlap;
 
@@ -367,8 +397,24 @@ function updateMidDashHollow(
     }
 
     enemy.stateTimer -= mobDt;
-    // 📌 플레이어가 돌격 사격 거리(380px) 이내로 들어왔을 때만 차징 시작!
-    if (enemy.stateTimer <= 0 && distToRealP <= 380) {
+
+    // 📌 공격 전 뭉침 체크: 다른 MidDash 호로와 90px 이내로 뭉쳐있다면 공격 금지 -> 재배치 단계(relocating) 진입!
+    let isStacked = false;
+    for (const other of state.enemies) {
+      if (other.id !== enemy.id && other.type === 'MidDash') {
+        if (Math.hypot(enemy.x - other.x, enemy.y - other.y) < 90) {
+          isStacked = true;
+          break;
+        }
+      }
+    }
+
+    if (isStacked) {
+      // 뭉쳐있다면 공격을 즉시 보류하고 적당한 빈 공간으로 우선 재배치!
+      enemy.state = 'relocating';
+      enemy.stateTimer = 1.0;
+    } else if (enemy.stateTimer <= 0 && distToRealP <= 380) {
+      // 뭉치지 않고 전열이 정돈된 상태에서만 차징 사출 시작!
       enemy.state = 'charging';
       enemy.stateTimer = 2.0;
       enemy.telegraphProgress = 0;
@@ -377,6 +423,41 @@ function updateMidDashHollow(
       enemy.lockedAngle = Math.atan2(aimY - enemy.y, aimX - enemy.x);
     } else if (enemy.stateTimer <= 0) {
       enemy.stateTimer = 0.25;
+    }
+  } else if (enemy.state === 'relocating') {
+    // 📌 뭉침 해제 전술 재배치 단계: 절대 공격 불가 & 주변 빈 공간으로 확산 분산 이동!
+    enemy.stateTimer -= mobDt;
+
+    let repulseX = 0;
+    let repulseY = 0;
+
+    for (const other of state.enemies) {
+      if (other.id !== enemy.id && other.type === 'MidDash') {
+        const odx = enemy.x - other.x;
+        const ody = enemy.y - other.y;
+        const odist = Math.hypot(odx, ody);
+        if (odist < 120 && odist > 0) {
+          repulseX += (odx / odist);
+          repulseY += (ody / odist);
+        }
+      }
+    }
+
+    const normRep = Math.hypot(repulseX, repulseY);
+    if (normRep > 0.001) {
+      enemy.x += (repulseX / normRep) * enemy.speed * 1.1 * mobDt;
+      enemy.y += (repulseY / normRep) * enemy.speed * 1.1 * mobDt;
+    } else {
+      // 플레이어 주변 펼침 각도로 분산 이동
+      const pAngle = Math.atan2(enemy.y - p.y, enemy.x - p.x);
+      enemy.x += Math.cos(pAngle) * enemy.speed * mobDt;
+      enemy.y += Math.sin(pAngle) * enemy.speed * mobDt;
+    }
+
+    // 충분히 떨어졌거나 타이머 만료 시 chase 재진입
+    if (enemy.stateTimer <= 0) {
+      enemy.state = 'chase';
+      enemy.stateTimer = 0.5;
     }
   } else if (enemy.state === 'charging') {
     enemy.stateTimer -= mobDt;
@@ -418,9 +499,28 @@ function updateMidDashHollow(
     if (enemy.stateTimer <= 0) {
       enemy.state = 'cooldown';
       enemy.stateTimer = 1.0;
+      enemy.lockedAngle = undefined; // 📌 돌진 완료 후 lockedAngle 해제하여 즉시 다시 플레이어를 고개 돌려 바라보게 함!
+      enemy.lockedWorldX = undefined;
+      enemy.lockedWorldY = undefined;
     }
   } else if (enemy.state === 'cooldown') {
     enemy.stateTimer -= mobDt;
+
+    // 📌 돌진 완료 후 서로 인접한 경우, 물리적으로 밀쳐내지 않고 적당한 빈 공간으로 유기적 이동 재배치!
+    for (const other of state.enemies) {
+      if (other.id !== enemy.id && other.type === 'MidDash') {
+        const odx = enemy.x - other.x;
+        const ody = enemy.y - other.y;
+        const odist = Math.hypot(odx, ody);
+        if (odist < 55 && odist > 0) {
+          // 밀쳐내기 반동 대신 인접 적당한 빈 공간으로 부드럽게 재배치 이동 (Glide to adjacent spot)
+          const offsetAngle = Math.atan2(ody, odx);
+          enemy.x += Math.cos(offsetAngle) * 45 * mobDt;
+          enemy.y += Math.sin(offsetAngle) * 45 * mobDt;
+        }
+      }
+    }
+
     if (enemy.stateTimer <= 0) {
       enemy.state = 'chase';
       enemy.stateTimer = 1.2;
