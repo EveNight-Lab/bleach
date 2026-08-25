@@ -184,11 +184,60 @@ export function updateAttacks(dt: number) {
         enemy.kbVx = Math.cos(kbAngle) * impulseSpeed;
         enemy.kbVy = Math.sin(kbAngle) * impulseSpeed;
 
-        // 귀(鬼) 서브스탯 전용 둔화 보너스가 있을 때만 제한적 둔화 부여 (기본 히트 시 멈춤 버그 차단)
+        // 귀(鬼) 서브스탯 전용 둔화 보너스가 있을 때만 제한적 둔화 부여
         const slowRate = sub ? sub.bulletSlowBonus || 0 : 0;
         if (slowRate > 0) {
           enemy.slowTimer = 1.0;
           enemy.slowFactor = Math.min(0.4, slowRate);
+        }
+
+        // ⚔️ 시해(始解) 각성 인과율 13대 레지스트리 효과 즉시 발동!
+        if (state.shikai && state.shikai.block2) {
+          const b2 = state.shikai.block2;
+
+          // 1. Zero + Move_Speed (빙륜환 동결 속박)
+          if (b2.opKey === 1 || (b2.operator === 'Zero' && b2.targetDomain === 'Move_Speed')) {
+            enemy.slowTimer = 1.5;
+            enemy.slowFactor = 0; // 이속 0 완전 동결!
+            addFloatingText(enemy.x, enemy.y - 20, '❄️ 빙결 속박!', '#00e5ff');
+          }
+
+          // 2. Zero + Local_Time_Scale (타임 스톱)
+          if (b2.opKey === 2) {
+            enemy.slowTimer = 2.0;
+            enemy.slowFactor = 0;
+            addFloatingText(enemy.x, enemy.y - 20, '⏳ 시공간 정지!', '#f59e0b');
+          }
+
+          // 4. Invert + Move_Direction (역무 환술)
+          if (b2.opKey === 4) {
+            enemy.kbVx = -enemy.vx * 2.5;
+            enemy.kbVy = -enemy.vy * 2.5;
+            addFloatingText(enemy.x, enemy.y - 20, '🌀 역무 환술!', '#c084fc');
+          }
+
+          // 6. Link + Current_HP (바라간 체인 전이)
+          if (b2.opKey === 6) {
+            let chainCount = 0;
+            for (const other of state.enemies) {
+              if (other.id !== enemy.id && Math.hypot(other.x - enemy.x, other.y - enemy.y) < 220) {
+                other.hp -= Math.floor(atk.damage * 0.7);
+                createHitParticles(other.x, other.y, '#a855f7', 4);
+                chainCount++;
+                if (chainCount >= 20) break;
+              }
+            }
+            if (chainCount > 0) {
+              addFloatingText(enemy.x, enemy.y - 20, `🔗 체인 ${chainCount}전이!`, '#a855f7');
+            }
+          }
+
+          // 8. Substitute + Current_HP (흡혈 검강)
+          if (b2.opKey === 8) {
+            const heal = Math.max(1, Math.floor(atk.damage * 0.20));
+            p.hp = Math.min(p.maxHp, p.hp + heal);
+            addFloatingText(p.x, p.y - 15, `+${heal} HP`, '#10b981');
+          }
         }
 
         // 데미지 텍스트 및 파티클 생성

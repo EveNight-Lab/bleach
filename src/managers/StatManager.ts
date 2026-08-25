@@ -7,7 +7,7 @@ import { state } from '../core/GameState';
 import { CardOption, Stats, SubStats, SubStatEffect } from '../types/game';
 import { Synth } from '../core/AudioManager';
 
-export function checkExpLevelUp(onTriggerModal: () => void) {
+export function checkExpLevelUp(onTriggerModal: () => void, onTriggerShikaiModal?: () => void) {
   if (state.isPaused) return; // 이미 모달이 떠있거나 일시정지 상태면 중복 발동 방지!
 
   if (state.exp >= state.maxExp) {
@@ -17,7 +17,12 @@ export function checkExpLevelUp(onTriggerModal: () => void) {
 
     state.isPaused = true;
     Synth.playLevelUpSound();
-    onTriggerModal();
+
+    if (state.level >= 10 && !state.shikaiUnlocked && onTriggerShikaiModal) {
+      onTriggerShikaiModal();
+    } else {
+      onTriggerModal();
+    }
   }
 }
 

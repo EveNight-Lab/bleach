@@ -184,6 +184,38 @@ export interface CardOption {
   subStats: SubStatEffect[];
 }
 
+export type ShikaiArchetype = 'A1_Basic' | 'A2_Burst' | 'B1_Area' | 'B2_Compact';
+
+export interface ShikaiBlock1 {
+  shape: 'Rhombus' | 'Crescent' | 'Circle';
+  shapeName: string;
+  count: number;
+  spawnOrigin: 'Caster_To_Enemy' | 'Caster_To_Random' | 'Caster_Adjacent_Random';
+  text: string;
+  isMacro: boolean;
+  macroType?: 'Dragon' | 'Spiral' | 'Domain';
+}
+
+export interface ShikaiBlock2 {
+  opKey: number; // 1 ~ 13
+  opName: string;
+  text: string;
+  operator: 'Zero' | 'Invert' | 'Link' | 'Substitute' | 'Amplify' | 'Add_Subtract';
+  targetDomain: string;
+}
+
+export interface ShikaiPipeline {
+  id: string;
+  name: string;
+  releaseCommand: string;
+  archetype: ShikaiArchetype;
+  archetypeName: string;
+  block1: ShikaiBlock1;
+  block2: ShikaiBlock2;
+  color: string;
+  icon: string;
+}
+
 export interface GameState {
   screen: ScreenState;
   isPaused: boolean;
@@ -211,4 +243,6 @@ export interface GameState {
   globalTimeScale: number;
   attackTimer: number;
   attackCooldown: number;
+  shikai: ShikaiPipeline | null;
+  shikaiUnlocked: boolean;
 }

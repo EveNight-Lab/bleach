@@ -122,7 +122,9 @@ export const state: GameState = {
   globalTimeScale: 1.0,
 
   attackTimer: 0,
-  attackCooldown: 0.35
+  attackCooldown: 0.35,
+  shikai: null,
+  shikaiUnlocked: false
 };
 
 export function resetGameState() {
@@ -136,6 +138,8 @@ export function resetGameState() {
   state.gameTime = 0;
   state.bulletTimeTimer = 0;
   state.globalTimeScale = 1.0;
+  state.shikai = null;
+  state.shikaiUnlocked = false;
 
   const baseHp = 100 + (state.stats.gwon * 20);
   state.player.maxHp = baseHp;

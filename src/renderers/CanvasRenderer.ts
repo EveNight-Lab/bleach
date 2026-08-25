@@ -59,7 +59,7 @@ export function addFloatingText(x: number, y: number, text: string, color: strin
 export function renderCanvas(ctx: CanvasRenderingContext2D, width: number, height: number) {
   const p = state.player;
 
-  // 📌 카메라 줌 아웃 (모바일 가로 짧은 뷰포트에서 넓은 전장을 볼 수 있도록 0.58x ~ 0.65x 광활한 시야 확장!)
+  // 📌 카메라 줌 아웃
   const zoom = Math.min(1.0, Math.max(0.58, height / 580));
 
   state.camera.x = p.x - (width / zoom) / 2;
@@ -70,19 +70,19 @@ export function renderCanvas(ctx: CanvasRenderingContext2D, width: number, heigh
   ctx.fillRect(0, 0, width, height);
 
   ctx.save();
-  // 📌 카메라 센터링 및 광활한 시야 줌아웃 행렬 매트릭스
+  // 📌 던파(DFO) 2.5D 벨트스크롤 시점 사영 변환: Y축을 0.68배 압축하여 35도 경사각 입체 전장 구축!
   ctx.translate(width / 2, height / 2);
-  ctx.scale(zoom, zoom);
+  ctx.scale(zoom, zoom * 0.68);
   ctx.translate(-p.x, -p.y);
 
-  // 2. 60px 전술 그리드 & 청록색 영압 장막 (Spirit Barrier)
+  // 2. 60px 2.5D 전술 그리드 & 청록색 영압 장막 (Spirit Barrier)
   drawArenaGrid(ctx);
 
   // 3. 3대 전술 호로 예고 구역 (World-Anchored Danger Zone Mask)
   drawEnemyTelegraphs(ctx);
 
-  // 4. 영력 경험치 구체 렌더링
-  drawExpGems(ctx);
+  // 4. 발밑 입체 타원 그림자 레이어 (Floor Elliptical Shadow Pass - 바닥에 깔리는 그림자!)
+  drawFloorShadows(ctx);
 
   // 5. 순보 잔상 연출 렌더링
   drawAfterimages(ctx);
@@ -90,22 +90,19 @@ export function renderCanvas(ctx: CanvasRenderingContext2D, width: number, heigh
   // 6. 월아천충 및 기본 공격 렌더링
   drawAttacks(ctx);
 
-  // 7. 엘리트 호로 적 렌더링
-  drawEnemies(ctx);
+  // 7. 📌 던파(DFO) 2.5D Y-Depth 입체 정렬 렌더링 (Y좌표가 아래쪽인 객체가 위로 입체 중첩!)
+  drawYSortedEntities(ctx);
 
   // 8. 적 세로 투사체 렌더링
   drawEnemyProjectiles(ctx);
 
-  // 9. 사신 플레이어 & 영압 오라 링 렌더링
-  drawPlayer(ctx);
-
-  // 10. 파티클 및 플로팅 텍스트 렌더링
+  // 9. 파티클 및 플로팅 텍스트 렌더링
   drawParticles(ctx);
   drawFloatingTexts(ctx);
 
   ctx.restore();
 
-  // 11. 화면 피격 붉은 플래시 오버레이
+  // 10. 화면 피격 붉은 플래시 오버레이
   if (state.playerHitFlashTimer > 0) {
     state.playerHitFlashTimer -= 0.016;
     ctx.fillStyle = `rgba(239, 68, 68, ${Math.min(0.35, state.playerHitFlashTimer * 1.5)})`;
@@ -113,39 +110,205 @@ export function renderCanvas(ctx: CanvasRenderingContext2D, width: number, heigh
   }
 }
 
-// 60px 타일 전술 바닥 및 청록색 영압 장막 (Spirit Barrier Glow)
+// 📌 2.5D 바닥 입체 그림자 패스 (Footstep Elliptical Shadows)
+function drawFloorShadows(ctx: CanvasRenderingContext2D) {
+  // 1. 경험치 구체 그림자
+  for (const gem of state.expGems) {
+    drawSingleShadow(ctx, gem.x, gem.y, gem.radius * 0.7);
+  }
+  // 2. 호로 몬스터 그림자
+  for (const enemy of state.enemies) {
+    drawSingleShadow(ctx, enemy.x, enemy.y, enemy.radius);
+  }
+  // 3. 플레이어 그림자
+  const p = state.player;
+  drawSingleShadow(ctx, p.x, p.y, p.radius * 1.15, 'rgba(56, 189, 248, 0.45)');
+}
+
+function drawSingleShadow(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, glowColor?: string) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(x, y + radius * 0.6, radius * 1.2, radius * 0.45, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.65)';
+  ctx.fill();
+  if (glowColor) {
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// 📌 던파(DFO) 스타일 Y-Depth 정렬 렌더링 엔진 (Sort by Y)
+function drawYSortedEntities(ctx: CanvasRenderingContext2D) {
+  interface RenderItem {
+    y: number;
+    draw: () => void;
+  }
+
+  const renderQueue: RenderItem[] = [];
+
+  // 1. 플레이어 등록
+  renderQueue.push({
+    y: state.player.y,
+    draw: () => drawPlayer(ctx)
+  });
+
+  // 2. 몬스터 등록
+  for (const enemy of state.enemies) {
+    renderQueue.push({
+      y: enemy.y,
+      draw: () => drawSingleEnemy(ctx, enemy)
+    });
+  }
+
+  // 3. 영자 경험치 결정 등록
+  for (const gem of state.expGems) {
+    renderQueue.push({
+      y: gem.y,
+      draw: () => drawSingleExpGem(ctx, gem)
+    });
+  }
+
+  // Y 좌표 오름차순 정렬 (화면 위쪽 객체를 먼저 그리고, 아래쪽 객체를 위에 덮어 그림!)
+  renderQueue.sort((a, b) => a.y - b.y);
+
+  // 입체 정렬 순서대로 렌더링 실행!
+  for (const item of renderQueue) {
+    item.draw();
+  }
+}
+
+// 📌 2.5D 원근법 사다리꼴 사영 매핑 (Trapezoidal Vanishing-Point Projection: 위는 좁고 아래는 넓어지는 진짜 입체 원근법!)
+function project2DPoint(wx: number, wy: number) {
+  const halfH = state.arena.height / 2;
+  const normY = wy / halfH; // -1.0 (상단/원경) ~ +1.0 (하단/근경)
+  const perspectiveScale = 1.0 + normY * 0.26; // 상단은 0.74배로 좁아지고, 하단은 1.26배로 넓어짐!
+  return {
+    x: wx * perspectiveScale,
+    y: wy
+  };
+}
+
+// 📌 2.5D 던파(DFO) 사다리꼴 원근 바닥 타일 및 3D 영압 유리 장막 벽 (True Trapezoidal 2.5D Stage)
 function drawArenaGrid(ctx: CanvasRenderingContext2D) {
   const halfW = state.arena.width / 2;
   const halfH = state.arena.height / 2;
-
-  // 60px 격자 무늬
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
-  ctx.lineWidth = 1;
-
   const gridSize = 60;
-  const startX = -halfW;
-  const endX = halfW;
-  const startY = -halfH;
-  const endY = halfH;
 
+  // 1. 2.5D 사다리꼴 원근 타일링 렌더링 (위는 좁고 아래는 넓어지는 압도적 원근 입체감!)
+  let colIdx = 0;
+  for (let x = -halfW; x < halfW; x += gridSize) {
+    let rowIdx = 0;
+    for (let y = -halfH; y < halfH; y += gridSize) {
+      const isAlt = (colIdx + rowIdx) % 2 === 0;
+
+      // 사다리꼴 4개 꼭지점 변환 연산
+      const p1 = project2DPoint(x, y);
+      const p2 = project2DPoint(x + gridSize, y);
+      const p3 = project2DPoint(x + gridSize, y + gridSize);
+      const p4 = project2DPoint(x, y + gridSize);
+
+      // (1) 사다리꼴 바닥 타일 채우기
+      ctx.fillStyle = isAlt ? 'rgba(15, 23, 42, 0.60)' : 'rgba(6, 10, 20, 0.80)';
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // (2) 사다리꼴 타일 테두리 선 (원근 격자선)
+      ctx.strokeStyle = isAlt ? 'rgba(56, 189, 248, 0.08)' : 'rgba(56, 189, 248, 0.04)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // (3) 사다리꼴 교차점 콤팩트 전술 십자점
+      ctx.fillStyle = 'rgba(0, 229, 255, 0.28)';
+      ctx.fillRect(p1.x - 1.5, p1.y - 1.5, 3, 3);
+
+      rowIdx++;
+    }
+    colIdx++;
+  }
+
+  // 2. 📌 사다리꼴 원근 외곽 3D 영압 유리 장막 벽 (Trapezoidal 3D Glass Barrier Wall)
+  const wallH = 80;
+
+  // 바닥 4개 사다리꼴 모서리 꼭지점 연산
+  const botLeft = project2DPoint(-halfW, halfH);
+  const botRight = project2DPoint(halfW, halfH);
+  const topLeft = project2DPoint(-halfW, -halfH);
+  const topRight = project2DPoint(halfW, -halfH);
+
+  ctx.save();
+
+  // (1) 상단 후면 사다리꼴 유리 벽면
+  const topGrad = ctx.createLinearGradient(0, topLeft.y, 0, topLeft.y - wallH);
+  topGrad.addColorStop(0, 'rgba(0, 229, 255, 0.28)');
+  topGrad.addColorStop(0.5, 'rgba(0, 229, 255, 0.12)');
+  topGrad.addColorStop(1, 'rgba(0, 229, 255, 0.03)');
+
+  ctx.fillStyle = topGrad;
   ctx.beginPath();
-  for (let x = startX; x <= endX; x += gridSize) {
-    ctx.moveTo(x, startY);
-    ctx.lineTo(x, endY);
-  }
-  for (let y = startY; y <= endY; y += gridSize) {
-    ctx.moveTo(startX, y);
-    ctx.lineTo(endX, y);
-  }
+  ctx.moveTo(topLeft.x, topLeft.y);
+  ctx.lineTo(topRight.x, topRight.y);
+  ctx.lineTo(topRight.x, topRight.y - wallH);
+  ctx.lineTo(topLeft.x, topLeft.y - wallH);
+  ctx.closePath();
+  ctx.fill();
+
+  // (2) 좌측 사다리꼴 유리 벽면
+  const leftGrad = ctx.createLinearGradient(topLeft.x, 0, topLeft.x - wallH, 0);
+  leftGrad.addColorStop(0, 'rgba(0, 229, 255, 0.22)');
+  leftGrad.addColorStop(1, 'rgba(0, 229, 255, 0.02)');
+
+  ctx.fillStyle = leftGrad;
+  ctx.beginPath();
+  ctx.moveTo(topLeft.x, topLeft.y);
+  ctx.lineTo(botLeft.x, botLeft.y);
+  ctx.lineTo(botLeft.x, botLeft.y - wallH);
+  ctx.lineTo(topLeft.x, topLeft.y - wallH);
+  ctx.closePath();
+  ctx.fill();
+
+  // (3) 유리 대각선 빛반사 하이라이트 띠
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(topLeft.x + 100, topLeft.y);
+  ctx.lineTo(topLeft.x + 320, topLeft.y - wallH);
+  ctx.moveTo(topLeft.x + 180, topLeft.y);
+  ctx.lineTo(topLeft.x + 400, topLeft.y - wallH);
   ctx.stroke();
 
-  // 외곽 청록색 영압 장막 (Spirit Barrier Glow)
+  // (4) 바닥 사다리꼴 청록색 영압 펜스
   ctx.strokeStyle = '#00e5ff';
   ctx.lineWidth = 4;
   ctx.shadowColor = '#00e5ff';
-  ctx.shadowBlur = 18;
-  ctx.strokeRect(-halfW, -halfH, state.arena.width, state.arena.height);
-  ctx.shadowBlur = 0;
+  ctx.shadowBlur = 24;
+  ctx.beginPath();
+  ctx.moveTo(topLeft.x, topLeft.y);
+  ctx.lineTo(topRight.x, topRight.y);
+  ctx.lineTo(botRight.x, botRight.y);
+  ctx.lineTo(botLeft.x, botLeft.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  // (5) 3D 유리벽 상단 레일 림 & 결합 기둥
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(topLeft.x, topLeft.y - wallH);
+  ctx.lineTo(topRight.x, topRight.y - wallH);
+  ctx.moveTo(topLeft.x, topLeft.y);
+  ctx.lineTo(topLeft.x, topLeft.y - wallH);
+  ctx.moveTo(topRight.x, topRight.y);
+  ctx.lineTo(topRight.x, topRight.y - wallH);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 // 📌 3대 전술 호로 예고 구역 (World-Anchored Progressive Charge Fill Telegraph)
@@ -269,6 +432,22 @@ function drawPlayer(ctx: CanvasRenderingContext2D) {
     ctx.setLineDash([]);
   }
 
+  // ⚔️ 시해(始解) 각성 참백도 영압 회전 오라 링
+  if (state.shikai) {
+    const rot = (Date.now() / 500) % (Math.PI * 2);
+    ctx.save();
+    ctx.rotate(rot);
+    ctx.strokeStyle = state.shikai.color;
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = state.shikai.color;
+    ctx.shadowBlur = 18;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, p.radius + 20, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // 영압 오라 글로우
   const auraSize = p.radius + 12 + state.stats.gwi * 4;
   const grad = ctx.createRadialGradient(0, 0, p.radius * 0.5, 0, 0, auraSize);
@@ -301,73 +480,88 @@ function drawPlayer(ctx: CanvasRenderingContext2D) {
   ctx.restore();
 }
 
-function drawEnemies(ctx: CanvasRenderingContext2D) {
-  for (const enemy of state.enemies) {
-    ctx.save();
-    ctx.translate(enemy.x, enemy.y);
+function drawSingleEnemy(ctx: CanvasRenderingContext2D, enemy: any) {
+  ctx.save();
+  ctx.translate(enemy.x, enemy.y);
 
-    if (enemy.spawnGrace > 0) {
-      ctx.globalAlpha = 0.4;
-    }
-
-    // 🎯 40% 확률 길목 예측 차단 AI 호로 (붉은 전술 그림자 글로우)
-    if (enemy.isPredictive) {
-      ctx.shadowColor = '#f43f5e';
-      ctx.shadowBlur = 18;
-    } else {
-      ctx.shadowColor = enemy.color;
-      ctx.shadowBlur = 10;
-    }
-
-    ctx.fillStyle = enemy.color;
-    ctx.beginPath();
-    const r = enemy.radius;
-
-    if (enemy.type === 'Melee') {
-      // 📌 근거리형: ■ 네모 (Square)
-      ctx.fillRect(-r, -r, r * 2, r * 2);
-    } else if (enemy.type === 'MidDash') {
-      // 📌 중거리형: ▲ 세모 (Triangle)
-      const rot = enemy.lockedAngle !== undefined ? enemy.lockedAngle : (Math.atan2(state.player.y - enemy.y, state.player.x - enemy.x));
-      ctx.rotate(rot);
-      ctx.moveTo(r * 1.3, 0);
-      ctx.lineTo(-r * 0.9, -r * 0.9);
-      ctx.lineTo(-r * 0.9, r * 0.9);
-      ctx.closePath();
-      ctx.fill();
-    } else if (enemy.type === 'Projectile') {
-      // 📌 원거리형: ◆ 마름모 (Diamond)
-      ctx.moveTo(0, -r * 1.25);
-      ctx.lineTo(r * 1.1, 0);
-      ctx.lineTo(0, r * 1.25);
-      ctx.lineTo(-r * 1.1, 0);
-      ctx.closePath();
-      ctx.fill();
-    } else {
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    if (enemy.type === 'Melee') {
-      ctx.fill();
-    }
-    ctx.shadowBlur = 0;
-
-    // 체력바
-    if (enemy.hp < enemy.maxHp) {
-      const barW = enemy.radius * 2.2;
-      const barH = 4;
-      const hpRatio = Math.max(0, enemy.hp / enemy.maxHp);
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-      ctx.fillRect(-barW / 2, -enemy.radius - 12, barW, barH);
-
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(-barW / 2, -enemy.radius - 12, barW * hpRatio, barH);
-    }
-
-    ctx.restore();
+  if (enemy.spawnGrace > 0) {
+    ctx.globalAlpha = 0.4;
   }
+
+  // 🎯 40% 확률 길목 예측 차단 AI 호로 (붉은 전술 그림자 글로우)
+  if (enemy.isPredictive) {
+    ctx.shadowColor = '#f43f5e';
+    ctx.shadowBlur = 18;
+  } else {
+    ctx.shadowColor = enemy.color;
+    ctx.shadowBlur = 10;
+  }
+
+  ctx.fillStyle = enemy.color;
+  ctx.beginPath();
+  const r = enemy.radius;
+
+  if (enemy.type === 'Melee') {
+    // 📌 근거리형: ■ 네모 (Square)
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+  } else if (enemy.type === 'MidDash') {
+    // 📌 중거리형: ▲ 세모 (Triangle)
+    const rot = enemy.lockedAngle !== undefined ? enemy.lockedAngle : (Math.atan2(state.player.y - enemy.y, state.player.x - enemy.x));
+    ctx.rotate(rot);
+    ctx.moveTo(r * 1.3, 0);
+    ctx.lineTo(-r * 0.9, -r * 0.9);
+    ctx.lineTo(-r * 0.9, r * 0.9);
+    ctx.closePath();
+    ctx.fill();
+  } else if (enemy.type === 'Projectile') {
+    // 📌 원거리형: ◆ 마름모 (Diamond)
+    ctx.moveTo(0, -r * 1.25);
+    ctx.lineTo(r * 1.1, 0);
+    ctx.lineTo(0, r * 1.25);
+    ctx.lineTo(-r * 1.1, 0);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (enemy.type === 'Melee') {
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // 체력바
+  if (enemy.hp < enemy.maxHp) {
+    const barW = enemy.radius * 2.2;
+    const barH = 4;
+    const hpRatio = Math.max(0, enemy.hp / enemy.maxHp);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+    ctx.fillRect(-barW / 2, -enemy.radius - 12, barW, barH);
+
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(-barW / 2, -enemy.radius - 12, barW * hpRatio, barH);
+  }
+
+  ctx.restore();
+}
+
+function drawSingleExpGem(ctx: CanvasRenderingContext2D, gem: any) {
+  ctx.save();
+  ctx.translate(gem.x, gem.y);
+  ctx.fillStyle = '#10b981';
+  ctx.shadowColor = '#10b981';
+  ctx.shadowBlur = 8;
+
+  ctx.beginPath();
+  ctx.moveTo(0, -gem.radius * 1.2);
+  ctx.lineTo(gem.radius, 0);
+  ctx.lineTo(0, gem.radius * 1.2);
+  ctx.lineTo(-gem.radius, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawAttacks(ctx: CanvasRenderingContext2D) {

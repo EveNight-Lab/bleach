@@ -16,7 +16,8 @@ let lastTime = 0;
 export function startBattleLoop(
   canvas: HTMLCanvasElement,
   onGameOverTrigger: () => void,
-  onLevelUpTrigger: () => void
+  onLevelUpTrigger: () => void,
+  onShikaiTrigger?: () => void
 ) {
   if (animFrameId) {
     cancelAnimationFrame(animFrameId);
@@ -43,7 +44,7 @@ export function startBattleLoop(
       }
 
       if (!state.isPaused && !state.isGameOver) {
-        update(dt, onGameOverTrigger, onLevelUpTrigger);
+        update(dt, onGameOverTrigger, onLevelUpTrigger, onShikaiTrigger);
       }
 
       renderCanvas(ctx, canvas.width, canvas.height);
@@ -65,7 +66,8 @@ export function stopBattleLoop() {
 function update(
   dt: number,
   onGameOverTrigger: () => void,
-  onLevelUpTrigger: () => void
+  onLevelUpTrigger: () => void,
+  onShikaiTrigger?: () => void
 ) {
   state.gameTime += dt;
 
@@ -83,7 +85,7 @@ function update(
   }
 
   // 2. 플레이어 이동 및 무적
-  updatePlayer(dt, onGameOverTrigger, () => checkExpLevelUp(onLevelUpTrigger));
+  updatePlayer(dt, onGameOverTrigger, () => checkExpLevelUp(onLevelUpTrigger, onShikaiTrigger));
 
   // 3. 자동 평타 사출 (스탯 및 선택지 상승폭 기반 자연 쿨타임 감소)
   state.attackTimer += dt;
@@ -105,5 +107,5 @@ function update(
   updateEnemies(dt, onGameOverTrigger, createHitParticles);
 
   // 6. 영합 구체 수집
-  updateExpGems(dt, () => checkExpLevelUp(onLevelUpTrigger));
+  updateExpGems(dt, () => checkExpLevelUp(onLevelUpTrigger, onShikaiTrigger));
 }

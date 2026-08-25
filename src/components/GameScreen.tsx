@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { HUD } from './HUD';
 import { TouchControls } from './TouchControls';
 import { LevelUpModal } from './LevelUpModal';
+import { ShikaiModal } from './ShikaiModal';
 import { GameOverModal } from './GameOverModal';
 import { startBattleLoop, stopBattleLoop } from '../core/GameLoop';
 import { setupKeyboardListeners } from '../core/InputManager';
@@ -16,6 +17,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onReturnToTitle, onReRol
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameState, setGameState] = useState({ ...state });
   const [isLevelUpOpen, setIsLevelUpOpen] = useState(false);
+  const [isShikaiOpen, setIsShikaiOpen] = useState(false);
   const [isGameOverOpen, setIsGameOverOpen] = useState(false);
 
   useEffect(() => {
@@ -33,6 +35,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onReturnToTitle, onReRol
       },
       () => {
         setIsLevelUpOpen(true);
+      },
+      () => {
+        setIsShikaiOpen(true);
       }
     );
 
@@ -54,6 +59,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onReturnToTitle, onReRol
 
   const handleLevelUpClose = () => {
     setIsLevelUpOpen(false);
+  };
+
+  const handleShikaiClose = () => {
+    setIsShikaiOpen(false);
   };
 
   const handleRetry = () => {
@@ -87,8 +96,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onReturnToTitle, onReRol
         }}
       />
 
+      {/* ⚔️ 참백도 시해 각성 5-릴 슬롯머신 모달 */}
+      <ShikaiModal
+        isOpen={isShikaiOpen}
+        onClose={handleShikaiClose}
+      />
+
       {/* Game Over Result Overlay Modal */}
-      <GameOverModal isOpen={isGameOverOpen} onRetry={handleRetry} />
+      <GameOverModal
+        isOpen={isGameOverOpen}
+        onRetry={handleRetry}
+        onReturnToTitle={onReturnToTitle}
+      />
     </div>
   );
 };
